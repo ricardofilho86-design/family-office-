@@ -1,79 +1,97 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "./lib/supabase";
 
 export default function App() {
-  const [form, setForm] = useState({
-    valor: "",
-    tipo: "Receita",
-    pessoa: "Ricardo",
-    origem: "PJ",
-    categoria: "Consultas",
-    descricao: ""
-  });
+  const [valor, setValor] = useState("");
+  const [dados, setDados] = useState([]);
+  const [invest, setInvest] = useState([]);
+  const [novoInvest, setNovoInvest] = useState("");
 
-  function handleChange(e) {
-    setForm({ ...form, [e.target.name]: e.target.value });
+  async function carregar() {
+    const { data } = await supabase.from("transactions").select("*");
+    setDados(data || []);
+
+    const { data: inv } = await supabase.from("investimentos").select("*");
+    setInvest(inv || []);
   }
+
+  useEffect(() => {
+    carregar();
+  }, []);
 
   async function salvar() {
-    const { error } = await supabase.from("transactions").insert([
+    await supabase.from("transactions").insert([
       {
         data: new Date(),
-        tipo: form.tipo,
-        pessoa: form.pessoa,
-        origem: form.origem,
-        categoria: form.categoria,
-        valor: Number(form.valor),
-        descricao: form.descricao
+        tipo: "Receita",
+        pessoa: "Ricardo",
+        origem: "PJ",
+        valor: Number(valor),
+        descricao: "Manual"
       }
     ]);
-
-    if (error) {
-      alert("Erro: " + error.message);
-    } else {
-      alert("Salvo com sucesso!");
-    }
+    carregar();
   }
 
+  async function salvarInvest() {
+    await supabase.from("investimentos").insert([
+      { nome: novoInvest, tipo: "Renda Fixa", valor: 1000 }
+    ]);
+    carregar();
+  }
+
+  const totalReceita = dados
+    .filter(d => d.tipo === "Receita")
+    .reduce((a, b) => a + Number(b.valor || 0), 0);
+
+  const totalDespesa = dados
+    .filter(d => d.tipo === "Despesa")
+    .reduce((a, b) => a + Number(b.valor || 0), 0);
+
   return (
-    <div style={{ padding: 20, maxWidth: 400 }}>
-      <h2>Family Office</h2>
+    <div style={{ padding: 20 }}>
+      <h1>Family Office</h1>
 
-      <select name="tipo" onChange={handleChange}>
-        <option>Receita</option>
-        <option>Despesa</option>
-      </select>
+      <h3>Saldo: {totalReceita - totalDespesa}</h3>
 
-      <select name="pessoa" onChange={handleChange}>
-        <option>Ricardo</option>
-        <option>Larissa</option>
-      </select>
+      <h4>Receitas: {totalReceita}</h4>
+      <h4>Despesas: {totalDespesa}</h4>
 
-      <select name="origem" onChange={handleChange}>
-        <option>PJ</option>
-        <option>PF</option>
-      </select>
+      <hr />
 
       <input
-        name="categoria"
-        placeholder="Categoria"
-        onChange={handleChange}
-      />
-
-      <input
-        name="descricao"
-        placeholder="Descrição"
-        onChange={handleChange}
-      />
-
-      <input
-        name="valor"
         placeholder="Valor"
-        type="number"
-        onChange={handleChange}
+        onChange={(e) => setValor(e.target.value)}
       />
+      <button onClick={salvar}>Salvar Receita</button>
 
-      <button onClick={salvar}>Salvar</button>
+      <hr />
+
+      <h3>Investimentos</h3>
+
+      <input
+        placeholder="Nome investimento"
+        onChange={(e) => setNovoInvest(e.target.value)}
+      />
+      <button onClick={salvarInvest}>Adicionar</button>
+
+      <ul>
+        {invest.map(i => (
+          <li key={i.id}>{i.nome} - {i.valor}</li>
+        ))}
+      </ul>
+
+      <hr />
+
+      <h3>Transações</h3>
+
+      <ul>
+        {dados.map(d => (
+          <li key={d.id}>
+            {d.tipo} - {d.valor}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
