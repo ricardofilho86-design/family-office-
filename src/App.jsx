@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "./lib/supabase";
+import { PieChart, Pie, Cell, Tooltip } from "recharts";
 
 export default function App() {
   const [form, setForm] = useState({
@@ -15,13 +16,18 @@ export default function App() {
   const [invest, setInvest] = useState([]);
   const [novoInvest, setNovoInvest] = useState("");
   const [valorInvest, setValorInvest] = useState("");
+  const [filtro, setFiltro] = useState("mes");
 
   function handleChange(e) {
     setForm({ ...form, [e.target.name]: e.target.value });
   }
 
   async function carregar() {
-    const { data } = await supabase.from("transactions").select("*").order("created_at", { ascending: false });
+    const { data } = await supabase
+      .from("transactions")
+      .select("*")
+      .order("created_at", { ascending: false });
+
     setDados(data || []);
 
     const { data: inv } = await supabase.from("investimentos").select("*");
@@ -46,7 +52,7 @@ export default function App() {
     ]);
 
     if (error) {
-      alert("Erro: " + error.message);
+      alert(error.message);
     } else {
       setForm({ ...form, valor: "", descricao: "" });
       carregar();
@@ -54,7 +60,7 @@ export default function App() {
   }
 
   async function salvarInvest() {
-    const { error } = await supabase.from("investimentos").insert([
+    await supabase.from("investimentos").insert([
       {
         nome: novoInvest,
         tipo: "Ativo",
@@ -62,34 +68,79 @@ export default function App() {
       }
     ]);
 
-    if (error) {
-      alert("Erro: " + error.message);
-    } else {
-      setNovoInvest("");
-      setValorInvest("");
-      carregar();
-    }
+    setNovoInvest("");
+    setValorInvest("");
+    carregar();
   }
 
-  const totalReceita = dados
+  function filtrarDados() {
+    const hoje = new Date();
+
+    return dados.filter(d => {
+      const data = new Date(d.data);
+
+      if (filtro === "semana") {
+        const semana = new Date();
+        semana.setDate(hoje.getDate() - 7);
+        return data >= semana;
+      }
+
+      if (filtro === "mes") {
+        return (
+          data.getMonth() === hoje.getMonth() &&
+          data.getFullYear() === hoje.getFullYear()
+        );
+      }
+
+      return true;
+    });
+  }
+
+  const filtrados = filtrarDados();
+
+  const totalReceita = filtrados
     .filter(d => d.tipo === "Receita")
     .reduce((a, b) => a + Number(b.valor || 0), 0);
 
-  const totalDespesa = dados
+  const totalDespesa = filtrados
     .filter(d => d.tipo === "Despesa")
     .reduce((a, b) => a + Number(b.valor || 0), 0);
 
   const saldo = totalReceita - totalDespesa;
 
+  const totalInvest = invest.reduce(
+    (a, b) => a + Number(b.valor || 0),
+    0
+  );
+
+  const patrimonio = saldo + totalInvest;
+
+  const porCategoria = Object.values(
+    filtrados.reduce((acc, item) => {
+      if (!acc[item.categoria]) {
+        acc[item.categoria] = { name: item.categoria, value: 0 };
+      }
+      acc[item.categoria].value += Number(item.valor);
+      return acc;
+    }, {})
+  );
+
   return (
-    <div style={{ padding: 20, maxWidth: 500, margin: "auto", fontFamily: "Arial" }}>
+    <div style={{ padding: 20, maxWidth: 600, margin: "auto" }}>
       <h1>Family Office</h1>
 
+      {/* FILTRO */}
+      <select onChange={(e) => setFiltro(e.target.value)}>
+        <option value="mes">Mensal</option>
+        <option value="semana">Semanal</option>
+      </select>
+
       {/* DASHBOARD */}
-      <div style={{ background: "#f5f5f5", padding: 15, borderRadius: 10 }}>
+      <div style={{ background: "#eee", padding: 15, borderRadius: 10 }}>
         <h3>Saldo: R$ {saldo.toFixed(2)}</h3>
         <p>Receitas: R$ {totalReceita.toFixed(2)}</p>
         <p>Despesas: R$ {totalDespesa.toFixed(2)}</p>
+        <h2>Patrimônio: R$ {patrimonio.toFixed(2)}</h2>
       </div>
 
       {/* FORMULÁRIO */}
@@ -139,6 +190,19 @@ export default function App() {
         <button onClick={salvar}>Salvar</button>
       </div>
 
+      {/* GRÁFICO */}
+      <div style={{ marginTop: 30 }}>
+        <h3>Gastos por Categoria</h3>
+        <PieChart width={300} height={300}>
+          <Pie data={porCategoria} dataKey="value" nameKey="name" outerRadius={100}>
+            {porCategoria.map((entry, index) => (
+              <Cell key={index} />
+            ))}
+          </Pie>
+          <Tooltip />
+        </PieChart>
+      </div>
+
       {/* INVESTIMENTOS */}
       <div style={{ marginTop: 30 }}>
         <h3>Investimentos</h3>
@@ -160,17 +224,19 @@ export default function App() {
 
         <ul>
           {invest.map(i => (
-            <li key={i.id}>{i.nome} - R$ {i.valor}</li>
+            <li key={i.id}>
+              {i.nome} - R$ {i.valor}
+            </li>
           ))}
         </ul>
       </div>
 
-      {/* LISTA */}
+      {/* TRANSAÇÕES */}
       <div style={{ marginTop: 30 }}>
         <h3>Transações</h3>
 
         <ul>
-          {dados.map(d => (
+          {filtrados.map(d => (
             <li key={d.id}>
               {d.tipo} | {d.categoria} | R$ {d.valor}
             </li>
