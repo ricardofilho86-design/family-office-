@@ -6,13 +6,13 @@ import {
 } from "recharts";
 
 export default function App() {
+
   const [dados, setDados] = useState([]);
   const [invest, setInvest] = useState([]);
 
   const [inicio, setInicio] = useState("");
   const [fim, setFim] = useState("");
 
-  const [tipoRelatorio, setTipoRelatorio] = useState("mensal");
   const [relatorio, setRelatorio] = useState(null);
 
   const [form, setForm] = useState({
@@ -35,7 +35,7 @@ export default function App() {
     const { data } = await supabase.from("transactions").select("*");
     setDados(data || []);
 
-    const { data: inv } = await supabase.from("investimentos").select("*");
+    const { data: inv } = await supabase.from("investimentos").select("*").order("data");
     setInvest(inv || []);
   }
 
@@ -54,13 +54,17 @@ export default function App() {
 
   const filtrados = filtrar();
 
-  const receitas = filtrados.filter(d => d.tipo === "Receita");
-  const despesas = filtrados.filter(d => d.tipo === "Despesa");
+  const totalReceita = filtrados
+    .filter(d => d.tipo === "Receita")
+    .reduce((a,b)=>a+Number(b.valor||0),0);
 
-  const totalReceita = receitas.reduce((a,b)=>a+Number(b.valor||0),0);
-  const totalDespesa = despesas.reduce((a,b)=>a+Number(b.valor||0),0);
+  const totalDespesa = filtrados
+    .filter(d => d.tipo === "Despesa")
+    .reduce((a,b)=>a+Number(b.valor||0),0);
+
   const saldo = totalReceita - totalDespesa;
 
+  // INVESTIMENTOS
   const totalInvest = invest.reduce((acc,i)=>{
     if(i.tipo_movimento==="Aporte") return acc + Number(i.valor);
     if(i.tipo_movimento==="Resgate") return acc - Number(i.valor);
@@ -69,36 +73,77 @@ export default function App() {
 
   const patrimonio = saldo + totalInvest;
 
-  function gerarRelatorio() {
-    const receitas = filtrados.filter(d=>d.tipo==="Receita")
-      .reduce((a,b)=>a+Number(b.valor||0),0);
+  // EVOLUÇÃO COMPLETA (com investimentos)
+  const evolucao = [];
+  let acumulado = 0;
 
-    const despesas = filtrados.filter(d=>d.tipo==="Despesa")
-      .reduce((a,b)=>a+Number(b.valor||0),0);
+  const eventos = [
+    ...dados.map(d => ({
+      data: d.data,
+      valor: d.tipo === "Receita" ? Number(d.valor) : -Number(d.valor)
+    })),
+    ...invest.map(i => ({
+      data: i.data,
+      valor: i.tipo_movimento === "Aporte"
+        ? Number(i.valor)
+        : -Number(i.valor)
+    }))
+  ];
 
-    setRelatorio({
-      receitas,
-      despesas,
-      saldo: receitas - despesas,
-      patrimonio
+  eventos.sort((a,b)=>new Date(a.data)-new Date(b.data));
+
+  eventos.forEach(e=>{
+    acumulado += e.valor;
+    evolucao.push({
+      data: new Date(e.data).toLocaleDateString(),
+      patrimonio: acumulado
     });
-  }
+  });
 
+  // CARTEIRA XP STYLE
+  const carteira = Object.values(
+    invest.reduce((acc, i) => {
+      const valor =
+        i.tipo_movimento === "Aporte"
+          ? Number(i.valor)
+          : -Number(i.valor);
+
+      if (!acc[i.categoria]) {
+        acc[i.categoria] = { name: i.categoria, value: 0 };
+      }
+
+      acc[i.categoria].value += valor;
+
+      return acc;
+    }, {})
+  ).filter(i => i.value > 0);
+
+  const totalCarteira = carteira.reduce((a,b)=>a+b.value,0);
+
+  const carteiraPercentual = carteira.map(i => ({
+    ...i,
+    percentual: totalCarteira > 0
+      ? ((i.value / totalCarteira) * 100).toFixed(1)
+      : 0
+  }));
+
+  // GRÁFICOS
   const graficoRD = [
     { name: "Receitas", value: totalReceita },
     { name: "Despesas", value: totalDespesa }
   ];
 
-  const porCategoria = Object.values(
-    filtrados.reduce((acc,item)=>{
-      if(!acc[item.categoria]){
-        acc[item.categoria] = { name:item.categoria, value:0 };
-      }
-      acc[item.categoria].value += Number(item.valor);
-      return acc;
-    },{})
-  );
+  // RELATÓRIO
+  function gerarRelatorio() {
+    setRelatorio({
+      receitas: totalReceita,
+      despesas: totalDespesa,
+      saldo,
+      patrimonio
+    });
+  }
 
+  // SALVAR
   async function salvar() {
     await supabase.from("transactions").insert([{
       data: new Date(),
@@ -129,6 +174,7 @@ export default function App() {
 
   return (
     <div style={{ background:"#0f172a", color:"#fff", minHeight:"100vh", padding:20 }}>
+
       <h1>Family Office</h1>
 
       {/* FILTRO */}
@@ -145,7 +191,56 @@ export default function App() {
         <Card title="Patrimônio" value={patrimonio}/>
       </div>
 
-      {/* FORM */}
+      {/* RELATÓRIO */}
+      <Section title="Relatório">
+        <button onClick={gerarRelatorio}>Gerar</button>
+        {relatorio && (
+          <>
+            <p>Receitas: R$ {relatorio.receitas.toFixed(2)}</p>
+            <p>Despesas: R$ {relatorio.despesas.toFixed(2)}</p>
+            <p>Saldo: R$ {relatorio.saldo.toFixed(2)}</p>
+            <h3>Patrimônio: R$ {relatorio.patrimonio.toFixed(2)}</h3>
+          </>
+        )}
+      </Section>
+
+      {/* GRÁFICOS */}
+      <Section title="Receitas vs Despesas">
+        <PieChart width={300} height={300}>
+          <Pie data={graficoRD} dataKey="value" outerRadius={100}>
+            {graficoRD.map((_,i)=><Cell key={i}/>)}
+          </Pie>
+          <Tooltip/>
+        </PieChart>
+      </Section>
+
+      <Section title="Evolução Patrimonial">
+        <LineChart width={500} height={300} data={evolucao}>
+          <CartesianGrid strokeDasharray="3 3"/>
+          <XAxis dataKey="data"/>
+          <YAxis/>
+          <Tooltip/>
+          <Line dataKey="patrimonio"/>
+        </LineChart>
+      </Section>
+
+      {/* CARTEIRA XP */}
+      <Section title="Carteira de Investimentos (Estilo XP)">
+        <PieChart width={350} height={350}>
+          <Pie data={carteira} dataKey="value" nameKey="name" outerRadius={120} label>
+            {carteira.map((_,i)=><Cell key={i}/>)}
+          </Pie>
+          <Tooltip/>
+        </PieChart>
+
+        {carteiraPercentual.map((c,i)=>(
+          <p key={i}>
+            {c.name} — R$ {c.value.toFixed(2)} ({c.percentual}%)
+          </p>
+        ))}
+      </Section>
+
+      {/* FORM TRANSAÇÃO */}
       <Section title="Novo Lançamento">
         <select onChange={e=>setForm({...form, tipo:e.target.value})}>
           <option>Receita</option>
@@ -172,7 +267,6 @@ export default function App() {
           <option>Saúde</option>
           <option>Educação</option>
           <option>Impostos</option>
-          <option>Investimentos</option>
         </select>
 
         <input placeholder="Descrição" onChange={e=>setForm({...form, descricao:e.target.value})}/>
@@ -180,35 +274,36 @@ export default function App() {
         <button onClick={salvar}>Salvar</button>
       </Section>
 
-      {/* GRÁFICO */}
-      <Section title="Receitas vs Despesas">
-        <PieChart width={300} height={300}>
-          <Pie data={graficoRD} dataKey="value" outerRadius={100}>
-            {graficoRD.map((_,i)=><Cell key={i}/>)}
-          </Pie>
-          <Tooltip/>
-        </PieChart>
-      </Section>
+      {/* INVESTIMENTOS */}
+      <Section title="Investimentos">
+        <input placeholder="Nome do ativo" onChange={e=>setFormInvest({...formInvest, nome:e.target.value})}/>
 
-      {/* POR CATEGORIA */}
-      <Section title="Despesas por Categoria">
-        <ul>
-          {porCategoria.map((c,i)=>(
-            <li key={i}>{c.name} - R$ {c.value}</li>
-          ))}
-        </ul>
-      </Section>
+        <select onChange={e=>setFormInvest({...formInvest, categoria:e.target.value})}>
+          <option>Renda Fixa</option>
+          <option>Ações</option>
+          <option>FIIs</option>
+          <option>ETFs</option>
+          <option>Internacional</option>
+          <option>Cripto</option>
+        </select>
 
-      {/* TRANSAÇÕES */}
-      <Section title="Transações">
+        <select onChange={e=>setFormInvest({...formInvest, tipo_movimento:e.target.value})}>
+          <option>Aporte</option>
+          <option>Resgate</option>
+        </select>
+
+        <input type="number" placeholder="Valor" onChange={e=>setFormInvest({...formInvest, valor:e.target.value})}/>
+        <button onClick={salvarInvest}>Salvar</button>
+
         <ul>
-          {filtrados.map(d=>(
-            <li key={d.id}>
-              {d.tipo} | {d.origem} | {d.categoria} | R$ {d.valor}
+          {invest.map(i=>(
+            <li key={i.id}>
+              {i.nome} | {i.categoria} | {i.tipo_movimento} | R$ {i.valor}
             </li>
           ))}
         </ul>
       </Section>
+
     </div>
   );
 }
