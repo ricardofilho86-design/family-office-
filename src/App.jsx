@@ -1,9 +1,21 @@
 import { useEffect, useState } from "react";
 import { supabase } from "./lib/supabase";
-import { PieChart, Pie, Cell, Tooltip } from "recharts";
+import {
+  LineChart, Line, PieChart, Pie, Cell,
+  Tooltip, XAxis, YAxis, CartesianGrid
+} from "recharts";
 
 export default function App() {
-  // ------------------ ESTADOS ------------------
+  // ---------------- ESTADOS ----------------
+  const [dados, setDados] = useState([]);
+  const [invest, setInvest] = useState([]);
+
+  const [inicio, setInicio] = useState("");
+  const [fim, setFim] = useState("");
+
+  const [tipoRelatorio, setTipoRelatorio] = useState("mensal");
+  const [relatorio, setRelatorio] = useState(null);
+
   const [form, setForm] = useState({
     tipo: "Receita",
     pessoa: "Ricardo",
@@ -13,9 +25,6 @@ export default function App() {
     valor: ""
   });
 
-  const [dados, setDados] = useState([]);
-  const [invest, setInvest] = useState([]);
-
   const [formInvest, setFormInvest] = useState({
     nome: "",
     categoria: "Renda Fixa",
@@ -23,31 +32,12 @@ export default function App() {
     valor: ""
   });
 
-  const [filtro, setFiltro] = useState("mes");
-
-  // ------------------ HANDLERS ------------------
-  function handleChange(e) {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  }
-
-  function handleInvest(e) {
-    setFormInvest({ ...formInvest, [e.target.name]: e.target.value });
-  }
-
-  // ------------------ LOAD ------------------
+  // ---------------- LOAD ----------------
   async function carregar() {
-    const { data } = await supabase
-      .from("transactions")
-      .select("*")
-      .order("created_at", { ascending: false });
-
+    const { data } = await supabase.from("transactions").select("*");
     setDados(data || []);
 
-    const { data: inv } = await supabase
-      .from("investimentos")
-      .select("*")
-      .order("data", { ascending: false });
-
+    const { data: inv } = await supabase.from("investimentos").select("*");
     setInvest(inv || []);
   }
 
@@ -55,99 +45,80 @@ export default function App() {
     carregar();
   }, []);
 
-  // ------------------ SALVAR TRANSAÇÃO ------------------
-  async function salvar() {
-    const { error } = await supabase.from("transactions").insert([
-      {
-        data: new Date(),
-        tipo: form.tipo,
-        pessoa: form.pessoa,
-        origem: form.origem,
-        categoria: form.categoria,
-        descricao: form.descricao,
-        valor: Number(form.valor)
-      }
-    ]);
-
-    if (error) {
-      alert(error.message);
-    } else {
-      setForm({ ...form, valor: "", descricao: "" });
-      carregar();
-    }
-  }
-
-  // ------------------ SALVAR INVESTIMENTO ------------------
-  async function salvarInvest() {
-    const { error } = await supabase.from("investimentos").insert([
-      {
-        nome: formInvest.nome,
-        categoria: formInvest.categoria,
-        tipo_movimento: formInvest.tipo_movimento,
-        valor: Number(formInvest.valor),
-        data: new Date()
-      }
-    ]);
-
-    if (error) {
-      alert(error.message);
-    } else {
-      setFormInvest({
-        nome: "",
-        categoria: "Renda Fixa",
-        tipo_movimento: "Aporte",
-        valor: ""
-      });
-      carregar();
-    }
-  }
-
-  // ------------------ FILTRO ------------------
-  function filtrarDados() {
-    const hoje = new Date();
-
+  // ---------------- FILTRO ----------------
+  function filtrar() {
     return dados.filter(d => {
       const data = new Date(d.data);
-
-      if (filtro === "semana") {
-        const semana = new Date();
-        semana.setDate(hoje.getDate() - 7);
-        return data >= semana;
-      }
-
-      if (filtro === "mes") {
-        return (
-          data.getMonth() === hoje.getMonth() &&
-          data.getFullYear() === hoje.getFullYear()
-        );
-      }
-
+      if (inicio && new Date(inicio) > data) return false;
+      if (fim && new Date(fim) < data) return false;
       return true;
     });
   }
 
-  const filtrados = filtrarDados();
+  const filtrados = filtrar();
 
-  // ------------------ CÁLCULOS ------------------
-  const totalReceita = filtrados
-    .filter(d => d.tipo === "Receita")
-    .reduce((a, b) => a + Number(b.valor || 0), 0);
+  // ---------------- CÁLCULOS ----------------
+  const receitas = filtrados.filter(d => d.tipo === "Receita");
+  const despesas = filtrados.filter(d => d.tipo === "Despesa");
 
-  const totalDespesa = filtrados
-    .filter(d => d.tipo === "Despesa")
-    .reduce((a, b) => a + Number(b.valor || 0), 0);
-
+  const totalReceita = receitas.reduce((a, b) => a + Number(b.valor || 0), 0);
+  const totalDespesa = despesas.reduce((a, b) => a + Number(b.valor || 0), 0);
   const saldo = totalReceita - totalDespesa;
 
-  const totalInvest = invest.reduce((acc, item) => {
-    if (item.tipo_movimento === "Aporte") return acc + Number(item.valor);
-    if (item.tipo_movimento === "Resgate") return acc - Number(item.valor);
+  const totalInvest = invest.reduce((acc, i) => {
+    if (i.tipo_movimento === "Aporte") return acc + Number(i.valor);
+    if (i.tipo_movimento === "Resgate") return acc - Number(i.valor);
     return acc;
   }, 0);
 
   const patrimonio = saldo + totalInvest;
 
-  // ------------------ GRÁFICO ------------------
+  // ---------------- RELATÓRIO ----------------
+  function gerarRelatorio() {
+    const hoje = new Date();
+    let base = dados;
+
+    if (tipoRelatorio === "semanal") {
+      const semana = new Date();
+      semana.setDate(hoje.getDate() - 7);
+      base = dados.filter(d => new Date(d.data) >= semana);
+    }
+
+    if (tipoRelatorio === "mensal") {
+      base = dados.filter(d => {
+        const data = new Date(d.data);
+        return data.getMonth() === hoje.getMonth() &&
+               data.getFullYear() === hoje.getFullYear();
+      });
+    }
+
+    const receitas = base.filter(d => d.tipo === "Receita")
+      .reduce((a,b)=>a+Number(b.valor||0),0);
+
+    const despesas = base.filter(d => d.tipo === "Despesa")
+      .reduce((a,b)=>a+Number(b.valor||0),0);
+
+    const saldo = receitas - despesas;
+
+    setRelatorio({
+      receitas,
+      despesas,
+      saldo,
+      patrimonio
+    });
+  }
+
+  // ---------------- GRÁFICOS ----------------
+  const graficoRD = [
+    { name: "Receitas", value: totalReceita },
+    { name: "Despesas", value: totalDespesa }
+  ];
+
+  const evolucao = filtrados.map(d => ({
+    data: new Date(d.data).toLocaleDateString(),
+    valor: Number(d.valor)
+  }));
+
   const porCategoria = Object.values(
     filtrados.reduce((acc, item) => {
       if (!acc[item.categoria]) {
@@ -158,143 +129,141 @@ export default function App() {
     }, {})
   );
 
-  // ------------------ UI ------------------
+  // ---------------- SALVAR ----------------
+  async function salvar() {
+    await supabase.from("transactions").insert([{
+      data: new Date(),
+      ...form,
+      valor: Number(form.valor)
+    }]);
+
+    setForm({ ...form, valor: "", descricao: "" });
+    carregar();
+  }
+
+  async function salvarInvest() {
+    await supabase.from("investimentos").insert([{
+      ...formInvest,
+      valor: Number(formInvest.valor),
+      data: new Date()
+    }]);
+
+    setFormInvest({
+      nome: "",
+      categoria: "Renda Fixa",
+      tipo_movimento: "Aporte",
+      valor: ""
+    });
+
+    carregar();
+  }
+
+  // ---------------- UI ----------------
   return (
-    <div style={{ padding: 20, maxWidth: 700, margin: "auto" }}>
+    <div style={{
+      background:"#0f172a",
+      color:"#fff",
+      minHeight:"100vh",
+      padding:20,
+      fontFamily:"system-ui"
+    }}>
       <h1>Family Office</h1>
 
-      {/* FILTRO */}
-      <select onChange={(e) => setFiltro(e.target.value)}>
-        <option value="mes">Mensal</option>
-        <option value="semana">Semanal</option>
-      </select>
+      {/* CALENDÁRIO */}
+      <div style={{ display:"flex", gap:10 }}>
+        <input type="date" onChange={e=>setInicio(e.target.value)} />
+        <input type="date" onChange={e=>setFim(e.target.value)} />
+      </div>
 
       {/* DASHBOARD */}
-      <div style={{ background: "#eee", padding: 15, borderRadius: 10 }}>
-        <h3>Saldo: R$ {saldo.toFixed(2)}</h3>
-        <p>Receitas: R$ {totalReceita.toFixed(2)}</p>
-        <p>Despesas: R$ {totalDespesa.toFixed(2)}</p>
-        <h2>Patrimônio: R$ {patrimonio.toFixed(2)}</h2>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:10, marginTop:20 }}>
+        <Card title="Saldo" value={saldo}/>
+        <Card title="Receita" value={totalReceita}/>
+        <Card title="Despesa" value={totalDespesa}/>
+        <Card title="Patrimônio" value={patrimonio}/>
       </div>
 
-      {/* FORMULÁRIO */}
-      <div style={{ marginTop: 20 }}>
-        <h3>Novo Lançamento</h3>
-
-        <select name="tipo" value={form.tipo} onChange={handleChange}>
-          <option>Receita</option>
-          <option>Despesa</option>
+      {/* RELATÓRIO */}
+      <Section title="Relatórios">
+        <select onChange={(e)=>setTipoRelatorio(e.target.value)}>
+          <option value="mensal">Mensal</option>
+          <option value="semanal">Semanal</option>
         </select>
 
-        <select name="pessoa" value={form.pessoa} onChange={handleChange}>
-          <option>Ricardo</option>
-          <option>Larissa</option>
-        </select>
+        <button onClick={gerarRelatorio}>Gerar</button>
 
-        <select name="origem" value={form.origem} onChange={handleChange}>
-          <option>PJ</option>
-          <option>PF</option>
-        </select>
+        {relatorio && (
+          <>
+            <p>Receitas: R$ {relatorio.receitas.toFixed(2)}</p>
+            <p>Despesas: R$ {relatorio.despesas.toFixed(2)}</p>
+            <p>Saldo: R$ {relatorio.saldo.toFixed(2)}</p>
+            <h3>Patrimônio: R$ {relatorio.patrimonio.toFixed(2)}</h3>
+          </>
+        )}
+      </Section>
 
-        <select name="categoria" value={form.categoria} onChange={handleChange}>
-          <option>Consultas</option>
-          <option>Alimentação</option>
-          <option>Moradia</option>
-          <option>Transporte</option>
-          <option>Impostos</option>
-          <option>Investimentos</option>
-          <option>Lazer</option>
-        </select>
-
-        <input
-          name="descricao"
-          placeholder="Descrição"
-          value={form.descricao}
-          onChange={handleChange}
-        />
-
-        <input
-          name="valor"
-          type="number"
-          placeholder="Valor"
-          value={form.valor}
-          onChange={handleChange}
-        />
-
-        <button onClick={salvar}>Salvar</button>
-      </div>
-
-      {/* GRÁFICO */}
-      <div style={{ marginTop: 30 }}>
-        <h3>Gastos por Categoria</h3>
+      {/* GRÁFICOS */}
+      <Section title="Receitas vs Despesas">
         <PieChart width={300} height={300}>
-          <Pie data={porCategoria} dataKey="value" nameKey="name" outerRadius={100}>
-            {porCategoria.map((entry, index) => (
-              <Cell key={index} />
-            ))}
+          <Pie data={graficoRD} dataKey="value" outerRadius={100}>
+            {graficoRD.map((_,i)=><Cell key={i}/>)}
           </Pie>
-          <Tooltip />
+          <Tooltip/>
         </PieChart>
-      </div>
+      </Section>
+
+      <Section title="Evolução">
+        <LineChart width={500} height={300} data={evolucao}>
+          <CartesianGrid strokeDasharray="3 3"/>
+          <XAxis dataKey="data"/>
+          <YAxis/>
+          <Tooltip/>
+          <Line dataKey="valor"/>
+        </LineChart>
+      </Section>
+
+      {/* FORM */}
+      <Section title="Novo Lançamento">
+        <input placeholder="Descrição" onChange={e=>setForm({...form, descricao:e.target.value})}/>
+        <input type="number" placeholder="Valor" onChange={e=>setForm({...form, valor:e.target.value})}/>
+        <button onClick={salvar}>Salvar</button>
+      </Section>
 
       {/* INVESTIMENTOS */}
-      <div style={{ marginTop: 30 }}>
-        <h3>Investimentos</h3>
-
-        <input
-          name="nome"
-          placeholder="Nome do ativo"
-          value={formInvest.nome}
-          onChange={handleInvest}
-        />
-
-        <select name="categoria" value={formInvest.categoria} onChange={handleInvest}>
+      <Section title="Investimentos">
+        <input placeholder="Nome" onChange={e=>setFormInvest({...formInvest, nome:e.target.value})}/>
+        <select onChange={e=>setFormInvest({...formInvest, categoria:e.target.value})}>
           <option>Renda Fixa</option>
           <option>Ações</option>
-          <option>Fundos Imobiliários (FIIs)</option>
-          <option>ETFs</option>
-          <option>Fundos de Investimento</option>
-          <option>Internacional</option>
-          <option>Criptomoedas</option>
-          <option>Previdência</option>
-          <option>Caixa / Liquidez</option>
+          <option>FIIs</option>
         </select>
-
-        <select name="tipo_movimento" value={formInvest.tipo_movimento} onChange={handleInvest}>
+        <select onChange={e=>setFormInvest({...formInvest, tipo_movimento:e.target.value})}>
           <option>Aporte</option>
           <option>Resgate</option>
         </select>
-
-        <input
-          name="valor"
-          type="number"
-          placeholder="Valor"
-          value={formInvest.valor}
-          onChange={handleInvest}
-        />
-
+        <input type="number" placeholder="Valor" onChange={e=>setFormInvest({...formInvest, valor:e.target.value})}/>
         <button onClick={salvarInvest}>Salvar</button>
+      </Section>
+    </div>
+  );
+}
 
-        <ul>
-          {invest.map(i => (
-            <li key={i.id}>
-              {i.nome} | {i.categoria} | {i.tipo_movimento} | R$ {i.valor}
-            </li>
-          ))}
-        </ul>
-      </div>
+// COMPONENTES
+function Card({title,value}) {
+  return (
+    <div style={{ background:"#1e293b", padding:15, borderRadius:10 }}>
+      <p>{title}</p>
+      <h2>R$ {Number(value).toFixed(2)}</h2>
+    </div>
+  );
+}
 
-      {/* TRANSAÇÕES */}
-      <div style={{ marginTop: 30 }}>
-        <h3>Transações</h3>
-
-        <ul>
-          {filtrados.map(d => (
-            <li key={d.id}>
-              {d.tipo} | {d.categoria} | R$ {d.valor}
-            </li>
-          ))}
-        </ul>
+function Section({title,children}) {
+  return (
+    <div style={{ marginTop:30, background:"#1e293b", padding:20, borderRadius:12 }}>
+      <h3>{title}</h3>
+      <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+        {children}
       </div>
     </div>
   );
