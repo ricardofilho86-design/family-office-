@@ -3,6 +3,7 @@ import { supabase } from "./lib/supabase";
 import { PieChart, Pie, Cell, Tooltip } from "recharts";
 
 export default function App() {
+  // ------------------ ESTADOS ------------------
   const [form, setForm] = useState({
     tipo: "Receita",
     pessoa: "Ricardo",
@@ -14,14 +15,26 @@ export default function App() {
 
   const [dados, setDados] = useState([]);
   const [invest, setInvest] = useState([]);
-  const [novoInvest, setNovoInvest] = useState("");
-  const [valorInvest, setValorInvest] = useState("");
+
+  const [formInvest, setFormInvest] = useState({
+    nome: "",
+    categoria: "Renda Fixa",
+    tipo_movimento: "Aporte",
+    valor: ""
+  });
+
   const [filtro, setFiltro] = useState("mes");
 
+  // ------------------ HANDLERS ------------------
   function handleChange(e) {
     setForm({ ...form, [e.target.name]: e.target.value });
   }
 
+  function handleInvest(e) {
+    setFormInvest({ ...formInvest, [e.target.name]: e.target.value });
+  }
+
+  // ------------------ LOAD ------------------
   async function carregar() {
     const { data } = await supabase
       .from("transactions")
@@ -30,7 +43,11 @@ export default function App() {
 
     setDados(data || []);
 
-    const { data: inv } = await supabase.from("investimentos").select("*");
+    const { data: inv } = await supabase
+      .from("investimentos")
+      .select("*")
+      .order("data", { ascending: false });
+
     setInvest(inv || []);
   }
 
@@ -38,6 +55,7 @@ export default function App() {
     carregar();
   }, []);
 
+  // ------------------ SALVAR TRANSAÇÃO ------------------
   async function salvar() {
     const { error } = await supabase.from("transactions").insert([
       {
@@ -59,20 +77,32 @@ export default function App() {
     }
   }
 
+  // ------------------ SALVAR INVESTIMENTO ------------------
   async function salvarInvest() {
-    await supabase.from("investimentos").insert([
+    const { error } = await supabase.from("investimentos").insert([
       {
-        nome: novoInvest,
-        tipo: "Ativo",
-        valor: Number(valorInvest)
+        nome: formInvest.nome,
+        categoria: formInvest.categoria,
+        tipo_movimento: formInvest.tipo_movimento,
+        valor: Number(formInvest.valor),
+        data: new Date()
       }
     ]);
 
-    setNovoInvest("");
-    setValorInvest("");
-    carregar();
+    if (error) {
+      alert(error.message);
+    } else {
+      setFormInvest({
+        nome: "",
+        categoria: "Renda Fixa",
+        tipo_movimento: "Aporte",
+        valor: ""
+      });
+      carregar();
+    }
   }
 
+  // ------------------ FILTRO ------------------
   function filtrarDados() {
     const hoje = new Date();
 
@@ -98,6 +128,7 @@ export default function App() {
 
   const filtrados = filtrarDados();
 
+  // ------------------ CÁLCULOS ------------------
   const totalReceita = filtrados
     .filter(d => d.tipo === "Receita")
     .reduce((a, b) => a + Number(b.valor || 0), 0);
@@ -108,13 +139,15 @@ export default function App() {
 
   const saldo = totalReceita - totalDespesa;
 
-  const totalInvest = invest.reduce(
-    (a, b) => a + Number(b.valor || 0),
-    0
-  );
+  const totalInvest = invest.reduce((acc, item) => {
+    if (item.tipo_movimento === "Aporte") return acc + Number(item.valor);
+    if (item.tipo_movimento === "Resgate") return acc - Number(item.valor);
+    return acc;
+  }, 0);
 
   const patrimonio = saldo + totalInvest;
 
+  // ------------------ GRÁFICO ------------------
   const porCategoria = Object.values(
     filtrados.reduce((acc, item) => {
       if (!acc[item.categoria]) {
@@ -125,8 +158,9 @@ export default function App() {
     }, {})
   );
 
+  // ------------------ UI ------------------
   return (
-    <div style={{ padding: 20, maxWidth: 600, margin: "auto" }}>
+    <div style={{ padding: 20, maxWidth: 700, margin: "auto" }}>
       <h1>Family Office</h1>
 
       {/* FILTRO */}
@@ -208,24 +242,43 @@ export default function App() {
         <h3>Investimentos</h3>
 
         <input
-          placeholder="Nome"
-          value={novoInvest}
-          onChange={(e) => setNovoInvest(e.target.value)}
+          name="nome"
+          placeholder="Nome do ativo"
+          value={formInvest.nome}
+          onChange={handleInvest}
         />
+
+        <select name="categoria" value={formInvest.categoria} onChange={handleInvest}>
+          <option>Renda Fixa</option>
+          <option>Ações</option>
+          <option>Fundos Imobiliários (FIIs)</option>
+          <option>ETFs</option>
+          <option>Fundos de Investimento</option>
+          <option>Internacional</option>
+          <option>Criptomoedas</option>
+          <option>Previdência</option>
+          <option>Caixa / Liquidez</option>
+        </select>
+
+        <select name="tipo_movimento" value={formInvest.tipo_movimento} onChange={handleInvest}>
+          <option>Aporte</option>
+          <option>Resgate</option>
+        </select>
 
         <input
+          name="valor"
           type="number"
           placeholder="Valor"
-          value={valorInvest}
-          onChange={(e) => setValorInvest(e.target.value)}
+          value={formInvest.valor}
+          onChange={handleInvest}
         />
 
-        <button onClick={salvarInvest}>Adicionar</button>
+        <button onClick={salvarInvest}>Salvar</button>
 
         <ul>
           {invest.map(i => (
             <li key={i.id}>
-              {i.nome} - R$ {i.valor}
+              {i.nome} | {i.categoria} | {i.tipo_movimento} | R$ {i.valor}
             </li>
           ))}
         </ul>
