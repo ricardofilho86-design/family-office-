@@ -1,5 +1,3 @@
-// SUBSTITUA TODO O CONTEÚDO DO src/App.jsx POR ESTE CÓDIGO
-
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "./lib/supabase";
 
@@ -239,9 +237,7 @@ export default function App() {
     filtrados
       .filter(item=>
 
-        String(item.tipo)
-          .toLowerCase()
-          .trim() === "receita"
+        item.tipo === "Receita"
 
       )
       .reduce(
@@ -261,9 +257,7 @@ export default function App() {
     filtrados
       .filter(item=>
 
-        String(item.tipo)
-          .toLowerCase()
-          .trim() === "despesa"
+        item.tipo === "Despesa"
 
       )
       .reduce(
@@ -283,9 +277,7 @@ export default function App() {
     filtrados
       .filter(item=>
 
-        String(item.categoria)
-          .toLowerCase()
-          .trim() === "impostos"
+        item.categoria === "Impostos"
 
       )
       .reduce(
@@ -305,15 +297,11 @@ export default function App() {
     filtrados
       .filter(item=>
 
-        String(item.tipo)
-          .toLowerCase()
-          .trim() === "despesa"
+        item.tipo === "Despesa"
 
         &&
 
-        String(item.categoria)
-          .toLowerCase()
-          .trim() !== "impostos"
+        item.categoria !== "Impostos"
 
       )
       .reduce(
@@ -334,17 +322,14 @@ export default function App() {
       .reduce((acc,item)=>{
 
         if(
-
-          String(item.tipo_movimento)
-            .toLowerCase()
-            .trim() === "aporte"
-
+          item.tipo_movimento === "Aporte"
         ) {
 
           return (
             acc +
             Number(item.valor || 0)
           );
+
         }
 
         return (
@@ -530,7 +515,9 @@ export default function App() {
         Number(form.valor);
 
       /*
+      =======================================
       RECEITA
+      =======================================
       */
 
       await supabase
@@ -559,7 +546,9 @@ export default function App() {
         }]);
 
       /*
+      =======================================
       IMPOSTO
+      =======================================
       */
 
       let imposto = 0;
@@ -601,6 +590,10 @@ export default function App() {
 
       ) {
 
+        /*
+        ISENTO
+        */
+
         if(valor <= 5000) {
 
           imposto = 0;
@@ -636,6 +629,10 @@ export default function App() {
 
           }
 
+          /*
+          REDUTOR
+          */
+
           if(valor <= 7350) {
 
             imposto -=
@@ -663,38 +660,43 @@ export default function App() {
         );
 
       /*
-      APENAS UM INSERT DE IMPOSTO
+      =======================================
+      APENAS UM IMPOSTO
+      =======================================
       */
 
-      
-         
+      if(imposto > 0) {
 
-          await supabase
-            .from("transactions")
-            .insert([{
+        await supabase
+          .from("transactions")
+          .insert([{
 
-              tipo:"Despesa",
+            tipo:"Despesa",
 
-              pessoa:form.pessoa,
+            pessoa:form.pessoa,
 
-              origem:"Imposto",
+            origem:"Imposto",
 
-              categoria:"Impostos",
+            categoria:"Impostos",
 
-              descricao:
-                `IR automático sobre ${form.origem}`,
+            descricao:
+              `IR automático sobre ${form.origem}`,
 
-              valor:imposto,
+            valor:imposto,
 
-              data:
-                new Date()
-                  .toISOString()
+            data:
+              new Date()
+                .toISOString()
 
-            }]);
-
-        }
+          }]);
 
       }
+
+      /*
+      =======================================
+      RESET
+      =======================================
+      */
 
       setForm({
 
@@ -828,165 +830,6 @@ export default function App() {
 
   ];
 
-  const despesasCategoria =
-    Object.values(
-
-      filtrados
-        .filter(item=>
-
-          item.tipo === "Despesa"
-
-        )
-        .reduce((acc,item)=>{
-
-          if(
-            !acc[item.categoria]
-          ) {
-
-            acc[item.categoria] = {
-
-              name:
-                item.categoria,
-
-              value:0
-
-            };
-
-          }
-
-          acc[item.categoria]
-            .value +=
-              Number(item.valor);
-
-          return acc;
-
-        },{})
-
-    );
-
-  /*
-  =====================================================
-  EVOLUÇÃO PATRIMONIAL
-  =====================================================
-  */
-
-  const patrimonioEvolucao = [];
-
-  let acumulado = 0;
-
-  [
-
-    ...filtrados.map(item=>({
-
-      data:item.data,
-
-      valor:
-
-        item.tipo === "Receita"
-
-        ?
-
-        Number(item.valor)
-
-        :
-
-        -Number(item.valor)
-
-    })),
-
-    ...investimentosFiltrados
-      .map(item=>({
-
-        data:item.data,
-
-        valor:
-
-          item.tipo_movimento === "Aporte"
-
-          ?
-
-          Number(item.valor)
-
-          :
-
-          -Number(item.valor)
-
-      }))
-
-  ]
-
-  .sort(
-    (a,b)=>
-
-      new Date(a.data)
-      -
-      new Date(b.data)
-  )
-
-  .forEach(item=>{
-
-    acumulado += item.valor;
-
-    patrimonioEvolucao.push({
-
-      data:
-        new Date(item.data)
-          .toLocaleDateString(),
-
-      patrimonio:acumulado
-
-    });
-
-  });
-
-  /*
-  =====================================================
-  CARTEIRA XP
-  =====================================================
-  */
-
-  const carteira =
-    Object.values(
-
-      investimentosFiltrados
-        .reduce((acc,item)=>{
-
-          const valor =
-
-            item.tipo_movimento === "Aporte"
-
-            ?
-
-            Number(item.valor)
-
-            :
-
-            -Number(item.valor);
-
-          if(
-            !acc[item.categoria]
-          ) {
-
-            acc[item.categoria] = {
-
-              name:item.categoria,
-
-              value:0
-
-            };
-
-          }
-
-          acc[item.categoria]
-            .value += valor;
-
-          return acc;
-
-        },{})
-
-    )
-    .filter(item=>item.value > 0);
-
   return (
 
     <div
@@ -1091,69 +934,58 @@ export default function App() {
 
         <div
           style={{
-            display:"grid",
-            gridTemplateColumns:
-              "repeat(auto-fit,minmax(450px,1fr))",
-            gap:30
+            background:"#1e293b",
+            padding:20,
+            borderRadius:20
           }}
         >
 
-          <div
-            style={{
-              background:"#1e293b",
-              padding:20,
-              borderRadius:20
-            }}
+          <h2>
+            Receitas x Despesas
+          </h2>
+
+          <ResponsiveContainer
+            width="100%"
+            height={350}
           >
 
-            <h2>
-              Receitas x Despesas
-            </h2>
+            <PieChart>
 
-            <ResponsiveContainer
-              width="100%"
-              height={350}
-            >
+              <Pie
+                data={
+                  graficoReceitaDespesa
+                }
+                dataKey="value"
+                nameKey="name"
+                outerRadius={120}
+                label
+              >
 
-              <PieChart>
+                {
+                  graficoReceitaDespesa
+                    .map((_,i)=>(
 
-                <Pie
-                  data={
-                    graficoReceitaDespesa
-                  }
-                  dataKey="value"
-                  nameKey="name"
-                  outerRadius={120}
-                  label
-                >
+                    <Cell
+                      key={i}
+                      fill={
+                        COLORS[
+                          i %
+                          COLORS.length
+                        ]
+                      }
+                    />
 
-                  {
-                    graficoReceitaDespesa
-                      .map((_,i)=>(
+                  ))
+                }
 
-                      <Cell
-                        key={i}
-                        fill={
-                          COLORS[
-                            i %
-                            COLORS.length
-                          ]
-                        }
-                      />
+              </Pie>
 
-                    ))
-                  }
+              <Tooltip/>
+              <Legend/>
 
-                </Pie>
+            </PieChart>
 
-                <Tooltip/>
-                <Legend/>
-
-              </PieChart>
-
-            </ResponsiveContainer>
-
-          </div>
+          </ResponsiveContainer>
 
         </div>
 
