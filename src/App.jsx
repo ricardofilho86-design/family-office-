@@ -330,13 +330,36 @@ export default function App() {
   =====================================================
   */
 
-  const patrimonio =
+  const despesasSemImposto =
+  filtrados
+    .filter(item=>
 
-    receitas
-    -
-    despesas
-    +
-    investimentos;
+      String(item.tipo)
+        .toLowerCase()
+        .trim() === "despesa"
+
+      &&
+
+      String(item.categoria)
+        .toLowerCase()
+        .trim() !== "impostos"
+
+    )
+    .reduce(
+      (acc,item)=>
+        acc + Number(item.valor || 0),
+      0
+    );
+
+const patrimonio =
+
+  receitas
+  -
+  despesasSemImposto
+  -
+  impostos
+  +
+  investimentos;
 
   /*
   =====================================================
