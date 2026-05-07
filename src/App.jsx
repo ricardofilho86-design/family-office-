@@ -516,7 +516,7 @@ export default function App() {
 
       /*
       =======================================
-      RECEITA
+      INSERE RECEITA
       =======================================
       */
 
@@ -547,7 +547,7 @@ export default function App() {
 
       /*
       =======================================
-      IMPOSTO
+      CALCULA IMPOSTO
       =======================================
       */
 
@@ -566,7 +566,7 @@ export default function App() {
       }
 
       /*
-      LUCROS
+      LUCROS ISENTOS
       */
 
       else if(
@@ -589,10 +589,6 @@ export default function App() {
         form.tributavel === true
 
       ) {
-
-        /*
-        ISENTO
-        */
 
         if(valor <= 5000) {
 
@@ -661,7 +657,7 @@ export default function App() {
 
       /*
       =======================================
-      APENAS UM IMPOSTO
+      APENAS UM INSERT DE IMPOSTO
       =======================================
       */
 
