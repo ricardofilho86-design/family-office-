@@ -26,9 +26,9 @@ import {
 export default function App() {
 
   /*
-    =====================================================
-    STATES
-    =====================================================
+  =====================================================
+  STATES
+  =====================================================
   */
 
   const [dados, setDados] = useState([]);
@@ -36,6 +36,15 @@ export default function App() {
 
   const [inicio, setInicio] = useState("");
   const [fim, setFim] = useState("");
+
+  /*
+  =====================================================
+  PROTEÇÃO ANTI DUPLO CLIQUE
+  =====================================================
+  */
+
+  const [salvandoReceita, setSalvandoReceita] =
+    useState(false);
 
   const [form, setForm] = useState({
 
@@ -68,9 +77,9 @@ export default function App() {
   });
 
   /*
-    =====================================================
-    CORES
-    =====================================================
+  =====================================================
+  CORES
+  =====================================================
   */
 
   const COLORS = [
@@ -87,9 +96,9 @@ export default function App() {
   ];
 
   /*
-    =====================================================
-    CARREGAR DADOS
-    =====================================================
+  =====================================================
+  CARREGAR DADOS
+  =====================================================
   */
 
   async function carregar() {
@@ -124,9 +133,9 @@ export default function App() {
   },[]);
 
   /*
-    =====================================================
-    FILTROS DE DATA
-    =====================================================
+  =====================================================
+  FILTROS DE DATA
+  =====================================================
   */
 
   const filtrados = useMemo(()=>{
@@ -171,9 +180,9 @@ export default function App() {
   ]);
 
   /*
-    =====================================================
-    INVESTIMENTOS FILTRADOS
-    =====================================================
+  =====================================================
+  INVESTIMENTOS FILTRADOS
+  =====================================================
   */
 
   const investimentosFiltrados =
@@ -219,9 +228,9 @@ export default function App() {
     ]);
 
   /*
-    =====================================================
-    RECEITAS
-    =====================================================
+  =====================================================
+  RECEITAS
+  =====================================================
   */
 
   const receitas =
@@ -241,9 +250,9 @@ export default function App() {
       );
 
   /*
-    =====================================================
-    DESPESAS
-    =====================================================
+  =====================================================
+  DESPESAS
+  =====================================================
   */
 
   const despesas =
@@ -263,9 +272,9 @@ export default function App() {
       );
 
   /*
-    =====================================================
-    IMPOSTOS
-    =====================================================
+  =====================================================
+  IMPOSTOS
+  =====================================================
   */
 
   const impostos =
@@ -285,9 +294,9 @@ export default function App() {
       );
 
   /*
-    =====================================================
-    INVESTIMENTOS
-    =====================================================
+  =====================================================
+  INVESTIMENTOS
+  =====================================================
   */
 
   const investimentos =
@@ -316,9 +325,9 @@ export default function App() {
       },0);
 
   /*
-    =====================================================
-    PATRIMÔNIO
-    =====================================================
+  =====================================================
+  PATRIMÔNIO
+  =====================================================
   */
 
   const patrimonio =
@@ -330,9 +339,9 @@ export default function App() {
     investimentos;
 
   /*
-    =====================================================
-    CONSOLIDAÇÃO
-    =====================================================
+  =====================================================
+  CONSOLIDAÇÃO
+  =====================================================
   */
 
   const receitasRicardo =
@@ -416,9 +425,9 @@ export default function App() {
       );
 
   /*
-    =====================================================
-    RELATÓRIO SEMANAL
-    =====================================================
+  =====================================================
+  RELATÓRIO SEMANAL
+  =====================================================
   */
 
   const receitasSemana =
@@ -504,9 +513,9 @@ export default function App() {
       );
 
   /*
-    =====================================================
-    RELATÓRIO MENSAL
-    =====================================================
+  =====================================================
+  RELATÓRIO MENSAL
+  =====================================================
   */
 
   const receitasMes =
@@ -582,252 +591,300 @@ export default function App() {
       );
 
   /*
-    =====================================================
-    SALVAR RECEITA
-    =====================================================
+  =====================================================
+  SALVAR RECEITA
+  =====================================================
   */
 
   async function salvarReceita() {
 
-    const valor =
-      Number(form.valor);
-
     /*
-      SALVA RECEITA
+    =========================================
+    ANTI DUPLO CLIQUE
+    =========================================
     */
 
-    const { error } =
-      await supabase
-        .from("transactions")
-        .insert([{
-
-          tipo:"Receita",
-
-          pessoa:form.pessoa,
-
-          origem:form.origem,
-
-          categoria:form.categoria,
-
-          descricao:form.descricao,
-
-          valor:valor,
-
-          tributavel:
-            form.tributavel,
-
-          data:
-            new Date()
-              .toISOString()
-
-        }]);
-
-    if(error) {
-
-      alert(
-        "Erro ao salvar receita: " +
-        error.message
-      );
-
+    if(salvandoReceita) {
       return;
     }
 
-    /*
-      =================================================
-      CÁLCULO DE IMPOSTO
-      =================================================
-    */
+    setSalvandoReceita(true);
 
-    let imposto = 0;
+    try {
 
-    /*
-      PJ
-    */
-
-    if(
-      form.origem === "PJ"
-    ) {
-
-      imposto =
-        valor * 0.15;
-    }
-
-    /*
-      LUCROS ISENTOS
-    */
-
-    else if(
-      form.origem === "Lucros"
-    ) {
-
-      imposto = 0;
-    }
-
-    /*
-      PF
-    */
-
-    else if(
-
-      form.origem === "PF"
-
-      &&
-
-      form.tributavel === true
-
-    ) {
+      const valor =
+        Number(form.valor);
 
       /*
-        ISENTO
+      =======================================
+      SALVA RECEITA
+      =======================================
       */
 
-      if(valor <= 5000) {
+      const { error } =
+        await supabase
+          .from("transactions")
+          .insert([{
+
+            tipo:"Receita",
+
+            pessoa:form.pessoa,
+
+            origem:form.origem,
+
+            categoria:form.categoria,
+
+            descricao:form.descricao,
+
+            valor:valor,
+
+            tributavel:
+              form.tributavel,
+
+            data:
+              new Date()
+                .toISOString()
+
+          }]);
+
+      if(error) {
+
+        alert(
+          "Erro ao salvar receita: " +
+          error.message
+        );
+
+        return;
+      }
+
+      /*
+      =======================================
+      CÁLCULO DE IMPOSTO
+      =======================================
+      */
+
+      let imposto = 0;
+
+      /*
+      PJ
+      */
+
+      if(
+        form.origem === "PJ"
+      ) {
+
+        imposto =
+          valor * 0.15;
+      }
+
+      /*
+      LUCROS ISENTOS
+      */
+
+      else if(
+        form.origem === "Lucros"
+      ) {
 
         imposto = 0;
       }
 
-      else {
+      /*
+      PF
+      */
 
-        let aliquota = 0;
-        let deducao = 0;
+      else if(
 
-        if(valor <= 2826.65) {
+        form.origem === "PF"
 
-          aliquota = 0.075;
-          deducao = 182.16;
+        &&
 
-        }
+        form.tributavel === true
 
-        else if(
-          valor <= 3751.05
-        ) {
+      ) {
 
-          aliquota = 0.15;
-          deducao = 394.16;
+        if(valor <= 5000) {
 
-        }
-
-        else if(
-          valor <= 4664.68
-        ) {
-
-          aliquota = 0.225;
-          deducao = 675.49;
-
+          imposto = 0;
         }
 
         else {
 
-          aliquota = 0.275;
-          deducao = 908.73;
+          let aliquota = 0;
+          let deducao = 0;
 
-        }
+          if(valor <= 2826.65) {
 
-        imposto =
+            aliquota = 0.075;
+            deducao = 182.16;
 
-          (
-            valor *
-            aliquota
-          )
+          }
 
-          -
+          else if(
+            valor <= 3751.05
+          ) {
 
-          deducao;
+            aliquota = 0.15;
+            deducao = 394.16;
 
-        /*
-          REDUTOR NOVA REGRA
-        */
+          }
 
-        if(valor <= 7350) {
+          else if(
+            valor <= 4664.68
+          ) {
 
-          const redutor =
+            aliquota = 0.225;
+            deducao = 675.49;
 
-            978.62
+          }
 
-            -
+          else {
 
-            (
-              0.133145 *
-              valor
-            );
+            aliquota = 0.275;
+            deducao = 908.73;
+
+          }
 
           imposto =
-            imposto -
-            redutor;
-        }
 
-        if(imposto < 0) {
-          imposto = 0;
+            (
+              valor *
+              aliquota
+            )
+
+            -
+            deducao;
+
+          /*
+          REDUTOR
+          */
+
+          if(valor <= 7350) {
+
+            const redutor =
+
+              978.62
+
+              -
+              (
+                0.133145 *
+                valor
+              );
+
+            imposto =
+              imposto -
+              redutor;
+          }
+
+          if(imposto < 0) {
+            imposto = 0;
+          }
+
         }
 
       }
 
-    }
+      imposto =
+        Number(
+          imposto.toFixed(2)
+        );
 
-    imposto =
-      Number(
-        imposto.toFixed(2)
-      );
+      /*
+      =======================================
+      EVITA DUPLICAÇÃO DE IMPOSTO
+      =======================================
+      */
 
-    /*
-      =================================================
-      SALVAR IMPOSTO
-      =================================================
-    */
+      if(imposto > 0) {
 
-    if(imposto > 0) {
+        const { data: existentes } =
+          await supabase
+            .from("transactions")
+            .select("*")
+            .eq(
+              "descricao",
+              `IR automático sobre ${form.origem}`
+            )
+            .eq(
+              "valor",
+              imposto
+            )
+            .gte(
+              "data",
+              new Date(
+                Date.now() - 10000
+              ).toISOString()
+            );
 
-      await supabase
-        .from("transactions")
-        .insert([{
+        if(
+          !existentes ||
+          existentes.length === 0
+        ) {
 
-          tipo:"Despesa",
+          await supabase
+            .from("transactions")
+            .insert([{
 
-          pessoa:form.pessoa,
+              tipo:"Despesa",
 
-          origem:"Imposto",
+              pessoa:form.pessoa,
 
-          categoria:"Impostos",
+              origem:"Imposto",
 
-          descricao:
-            `IR automático sobre ${form.origem}`,
+              categoria:"Impostos",
 
-          valor:imposto,
+              descricao:
+                `IR automático sobre ${form.origem}`,
 
-          data:
-            new Date()
-              .toISOString()
+              valor:imposto,
 
-        }]);
-    }
+              data:
+                new Date()
+                  .toISOString()
 
-    /*
+            }]);
+
+        }
+
+      }
+
+      /*
+      =======================================
       RESET
-    */
+      =======================================
+      */
 
-    setForm({
+      setForm({
 
-      pessoa:"Ricardo",
+        pessoa:"Ricardo",
 
-      origem:"PJ",
+        origem:"PJ",
 
-      categoria:"Consultas",
+        categoria:"Consultas",
 
-      descricao:"",
+        descricao:"",
 
-      valor:"",
+        valor:"",
 
-      tributavel:true
+        tributavel:true
 
-    });
+      });
 
-    carregar();
+      carregar();
+
+    }
+
+    finally {
+
+      setSalvandoReceita(false);
+
+    }
+
   }
 
   /*
-    =====================================================
-    SALVAR DESPESA
-    =====================================================
+  =====================================================
+  SALVAR DESPESA
+  =====================================================
   */
 
   async function salvarDespesa() {
@@ -870,9 +927,9 @@ export default function App() {
   }
 
   /*
-    =====================================================
-    SALVAR INVESTIMENTO
-    =====================================================
+  =====================================================
+  SALVAR INVESTIMENTO
+  =====================================================
   */
 
   async function salvarInvest() {
@@ -919,9 +976,9 @@ export default function App() {
   }
 
   /*
-    =====================================================
-    GRÁFICO RECEITAS X DESPESAS
-    =====================================================
+  =====================================================
+  GRÁFICOS
+  =====================================================
   */
 
   const graficoReceitaDespesa = [
@@ -937,12 +994,6 @@ export default function App() {
     }
 
   ];
-
-  /*
-    =====================================================
-    DESPESAS POR CATEGORIA
-    =====================================================
-  */
 
   const despesasCategoria =
     Object.values(
@@ -982,9 +1033,9 @@ export default function App() {
     );
 
   /*
-    =====================================================
-    EVOLUÇÃO PATRIMONIAL
-    =====================================================
+  =====================================================
+  EVOLUÇÃO PATRIMONIAL
+  =====================================================
   */
 
   const patrimonioEvolucao = [];
@@ -1061,9 +1112,9 @@ export default function App() {
   });
 
   /*
-    =====================================================
-    CARTEIRA XP
-    =====================================================
+  =====================================================
+  CARTEIRA XP
+  =====================================================
   */
 
   const carteira =
@@ -1219,561 +1270,6 @@ export default function App() {
           setFormInvest={setFormInvest}
           salvarInvest={salvarInvest}
         />
-
-      </div>
-
-      <div
-        style={{
-          display:"grid",
-          gridTemplateColumns:
-            "repeat(auto-fit,minmax(450px,1fr))",
-          gap:30,
-          marginTop:40
-        }}
-      >
-
-        <div
-          style={{
-            background:"#1e293b",
-            borderRadius:20,
-            padding:20
-          }}
-        >
-
-          <h2>
-            Receitas x Despesas
-          </h2>
-
-          <ResponsiveContainer
-            width="100%"
-            height={350}
-          >
-
-            <PieChart>
-
-              <Pie
-                data={
-                  graficoReceitaDespesa
-                }
-                dataKey="value"
-                nameKey="name"
-                outerRadius={120}
-                label
-              >
-
-                {
-                  graficoReceitaDespesa
-                    .map((_,i)=>(
-
-                    <Cell
-                      key={i}
-                      fill={
-                        COLORS[
-                          i %
-                          COLORS.length
-                        ]
-                      }
-                    />
-
-                  ))
-                }
-
-              </Pie>
-
-              <Tooltip/>
-              <Legend/>
-
-            </PieChart>
-
-          </ResponsiveContainer>
-
-        </div>
-
-        <div
-          style={{
-            background:"#1e293b",
-            borderRadius:20,
-            padding:20
-          }}
-        >
-
-          <h2>
-            Despesas por Categoria
-          </h2>
-
-          <ResponsiveContainer
-            width="100%"
-            height={350}
-          >
-
-            <BarChart
-              data={despesasCategoria}
-            >
-
-              <CartesianGrid
-                strokeDasharray="3 3"
-              />
-
-              <XAxis dataKey="name"/>
-
-              <YAxis/>
-
-              <Tooltip/>
-
-              <Legend/>
-
-              <Bar
-                dataKey="value"
-                fill="#ef4444"
-              />
-
-            </BarChart>
-
-          </ResponsiveContainer>
-
-        </div>
-
-        <div
-          style={{
-            background:"#1e293b",
-            borderRadius:20,
-            padding:20
-          }}
-        >
-
-          <h2>
-            Evolução Patrimonial
-          </h2>
-
-          <ResponsiveContainer
-            width="100%"
-            height={350}
-          >
-
-            <LineChart
-              data={
-                patrimonioEvolucao
-              }
-            >
-
-              <CartesianGrid
-                strokeDasharray="3 3"
-              />
-
-              <XAxis dataKey="data"/>
-
-              <YAxis/>
-
-              <Tooltip/>
-
-              <Legend/>
-
-              <Line
-                type="monotone"
-                dataKey="patrimonio"
-                stroke="#22c55e"
-                strokeWidth={3}
-              />
-
-            </LineChart>
-
-          </ResponsiveContainer>
-
-        </div>
-
-        <div
-          style={{
-            background:"#1e293b",
-            borderRadius:20,
-            padding:20
-          }}
-        >
-
-          <h2>
-            Carteira XP
-          </h2>
-
-          <ResponsiveContainer
-            width="100%"
-            height={350}
-          >
-
-            <PieChart>
-
-              <Pie
-                data={carteira}
-                dataKey="value"
-                nameKey="name"
-                outerRadius={120}
-
-                label={({
-
-                  name,
-                  value
-
-                })=>{
-
-                  const percentual =
-
-                    totalCarteira > 0
-
-                    ?
-
-                    (
-                      (
-                        value /
-                        totalCarteira
-                      ) * 100
-                    ).toFixed(1)
-
-                    :
-
-                    0;
-
-                  return
-                    `${name} ${percentual}%`;
-
-                }}
-              >
-
-                {
-                  carteira.map((_,i)=>(
-
-                    <Cell
-                      key={i}
-                      fill={
-                        COLORS[
-                          i %
-                          COLORS.length
-                        ]
-                      }
-                    />
-
-                  ))
-                }
-
-              </Pie>
-
-              <Tooltip/>
-              <Legend/>
-
-            </PieChart>
-
-          </ResponsiveContainer>
-
-        </div>
-
-      </div>
-
-      <div
-        style={{
-          marginTop:40,
-          background:"#1e293b",
-          padding:25,
-          borderRadius:20
-        }}
-      >
-
-        <h2>
-          Relatórios Financeiros
-        </h2>
-
-        <div
-          style={{
-            display:"grid",
-            gridTemplateColumns:
-              "repeat(auto-fit,minmax(300px,1fr))",
-            gap:20,
-            marginTop:20
-          }}
-        >
-
-          <div
-            style={{
-              background:"#0f172a",
-              padding:20,
-              borderRadius:16
-            }}
-          >
-
-            <h3
-              style={{
-                color:"#22c55e"
-              }}
-            >
-              Relatório Semanal
-            </h3>
-
-            <p>
-              Receitas:
-              {" "}
-              R$
-              {" "}
-              {
-                receitasSemana
-                  .toFixed(2)
-              }
-            </p>
-
-            <p>
-              Despesas:
-              {" "}
-              R$
-              {" "}
-              {
-                despesasSemana
-                  .toFixed(2)
-              }
-            </p>
-
-            <p>
-              Saldo:
-              {" "}
-              R$
-              {" "}
-              {
-                (
-                  receitasSemana -
-                  despesasSemana
-                ).toFixed(2)
-              }
-            </p>
-
-          </div>
-
-          <div
-            style={{
-              background:"#0f172a",
-              padding:20,
-              borderRadius:16
-            }}
-          >
-
-            <h3
-              style={{
-                color:"#3b82f6"
-              }}
-            >
-              Relatório Mensal
-            </h3>
-
-            <p>
-              Receitas:
-              {" "}
-              R$
-              {" "}
-              {
-                receitasMes
-                  .toFixed(2)
-              }
-            </p>
-
-            <p>
-              Despesas:
-              {" "}
-              R$
-              {" "}
-              {
-                despesasMes
-                  .toFixed(2)
-              }
-            </p>
-
-            <p>
-              Saldo:
-              {" "}
-              R$
-              {" "}
-              {
-                (
-                  receitasMes -
-                  despesasMes
-                ).toFixed(2)
-              }
-            </p>
-
-          </div>
-
-          <div
-            style={{
-              background:"#0f172a",
-              padding:20,
-              borderRadius:16
-            }}
-          >
-
-            <h3
-              style={{
-                color:"#f59e0b"
-              }}
-            >
-              Ricardo
-            </h3>
-
-            <p>
-              Receitas:
-              {" "}
-              R$
-              {" "}
-              {
-                receitasRicardo
-                  .toFixed(2)
-              }
-            </p>
-
-            <p>
-              Despesas:
-              {" "}
-              R$
-              {" "}
-              {
-                despesasRicardo
-                  .toFixed(2)
-              }
-            </p>
-
-            <p>
-              Saldo:
-              {" "}
-              R$
-              {" "}
-              {
-                (
-                  receitasRicardo -
-                  despesasRicardo
-                ).toFixed(2)
-              }
-            </p>
-
-          </div>
-
-          <div
-            style={{
-              background:"#0f172a",
-              padding:20,
-              borderRadius:16
-            }}
-          >
-
-            <h3
-              style={{
-                color:"#8b5cf6"
-              }}
-            >
-              Larissa
-            </h3>
-
-            <p>
-              Receitas:
-              {" "}
-              R$
-              {" "}
-              {
-                receitasLarissa
-                  .toFixed(2)
-              }
-            </p>
-
-            <p>
-              Despesas:
-              {" "}
-              R$
-              {" "}
-              {
-                despesasLarissa
-                  .toFixed(2)
-              }
-            </p>
-
-            <p>
-              Saldo:
-              {" "}
-              R$
-              {" "}
-              {
-                (
-                  receitasLarissa -
-                  despesasLarissa
-                ).toFixed(2)
-              }
-            </p>
-
-          </div>
-
-          <div
-            style={{
-              background:"#0f172a",
-              padding:20,
-              borderRadius:16
-            }}
-          >
-
-            <h3
-              style={{
-                color:"#06b6d4"
-              }}
-            >
-              Consolidado Geral
-            </h3>
-
-            <p>
-              Receitas:
-              {" "}
-              R$
-              {" "}
-              {
-                receitas
-                  .toFixed(2)
-              }
-            </p>
-
-            <p>
-              Despesas:
-              {" "}
-              R$
-              {" "}
-              {
-                despesas
-                  .toFixed(2)
-              }
-            </p>
-
-            <p>
-              Impostos:
-              {" "}
-              R$
-              {" "}
-              {
-                impostos
-                  .toFixed(2)
-              }
-            </p>
-
-            <p>
-              Investimentos:
-              {" "}
-              R$
-              {" "}
-              {
-                investimentos
-                  .toFixed(2)
-              }
-            </p>
-
-            <p>
-              Patrimônio:
-              {" "}
-              R$
-              {" "}
-              {
-                patrimonio
-                  .toFixed(2)
-              }
-            </p>
-
-          </div>
-
-        </div>
 
       </div>
 
