@@ -5,7 +5,6 @@ import DashboardCards from "./components/dashboard/DashboardCards";
 
 import ReceitaForm from "./components/lancamentos/ReceitaForm";
 import DespesaForm from "./components/lancamentos/DespesaForm";
-
 import InvestimentoForm from "./components/investimentos/InvestimentoForm";
 
 import {
@@ -156,6 +155,14 @@ export default function App() {
 
   const despesas = filtrados
     .filter(d=>d.tipo==="Despesa")
+    .reduce((a,b)=>a+Number(b.valor),0);
+
+  const impostos = filtrados
+    .filter(
+      d=>
+        d.tipo==="Despesa" &&
+        d.categoria==="Impostos"
+    )
     .reduce((a,b)=>a+Number(b.valor),0);
 
   const investimentos = investimentosFiltrados
@@ -487,6 +494,80 @@ export default function App() {
   const totalCarteira =
     carteira.reduce((a,b)=>a+b.value,0);
 
+  const receitasSemana = filtrados
+    .filter(d=>{
+
+      const data = new Date(d.data);
+      const hoje = new Date();
+
+      const diff =
+        (hoje - data) /
+        (1000*60*60*24);
+
+      return (
+        d.tipo==="Receita" &&
+        diff <= 7
+      );
+
+    })
+    .reduce((a,b)=>a+Number(b.valor),0);
+
+  const despesasSemana = filtrados
+    .filter(d=>{
+
+      const data = new Date(d.data);
+      const hoje = new Date();
+
+      const diff =
+        (hoje - data) /
+        (1000*60*60*24);
+
+      return (
+        d.tipo==="Despesa" &&
+        diff <= 7
+      );
+
+    })
+    .reduce((a,b)=>a+Number(b.valor),0);
+
+  const receitasMes = filtrados
+    .filter(d=>{
+
+      const data = new Date(d.data);
+      const hoje = new Date();
+
+      return (
+
+        d.tipo==="Receita" &&
+
+        data.getMonth() === hoje.getMonth() &&
+
+        data.getFullYear() === hoje.getFullYear()
+
+      );
+
+    })
+    .reduce((a,b)=>a+Number(b.valor),0);
+
+  const despesasMes = filtrados
+    .filter(d=>{
+
+      const data = new Date(d.data);
+      const hoje = new Date();
+
+      return (
+
+        d.tipo==="Despesa" &&
+
+        data.getMonth() === hoje.getMonth() &&
+
+        data.getFullYear() === hoje.getFullYear()
+
+      );
+
+    })
+    .reduce((a,b)=>a+Number(b.valor),0);
+
   return (
 
     <div
@@ -778,7 +859,6 @@ export default function App() {
               </Pie>
 
               <Tooltip/>
-
               <Legend/>
 
             </PieChart>
@@ -799,21 +879,91 @@ export default function App() {
       >
 
         <h2 style={{ color:"#fff" }}>
-          Relatório Financeiro
+          Relatórios Financeiros
         </h2>
 
         <div
           style={{
             display:"grid",
-            gridTemplateColumns:"repeat(auto-fit,minmax(250px,1fr))",
+            gridTemplateColumns:"repeat(auto-fit,minmax(300px,1fr))",
             gap:20,
             marginTop:20
           }}
         >
 
-          <div>
+          <div
+            style={{
+              background:"#0f172a",
+              padding:20,
+              borderRadius:16
+            }}
+          >
 
             <h3 style={{ color:"#22c55e" }}>
+              Relatório Semanal
+            </h3>
+
+            <p>
+              Receitas:
+              {" "}
+              R$ {receitasSemana.toFixed(2)}
+            </p>
+
+            <p>
+              Despesas:
+              {" "}
+              R$ {despesasSemana.toFixed(2)}
+            </p>
+
+            <p>
+              Saldo:
+              {" "}
+              R$ {(receitasSemana - despesasSemana).toFixed(2)}
+            </p>
+
+          </div>
+
+          <div
+            style={{
+              background:"#0f172a",
+              padding:20,
+              borderRadius:16
+            }}
+          >
+
+            <h3 style={{ color:"#3b82f6" }}>
+              Relatório Mensal
+            </h3>
+
+            <p>
+              Receitas:
+              {" "}
+              R$ {receitasMes.toFixed(2)}
+            </p>
+
+            <p>
+              Despesas:
+              {" "}
+              R$ {despesasMes.toFixed(2)}
+            </p>
+
+            <p>
+              Saldo:
+              {" "}
+              R$ {(receitasMes - despesasMes).toFixed(2)}
+            </p>
+
+          </div>
+
+          <div
+            style={{
+              background:"#0f172a",
+              padding:20,
+              borderRadius:16
+            }}
+          >
+
+            <h3 style={{ color:"#f59e0b" }}>
               Ricardo
             </h3>
 
@@ -832,14 +982,25 @@ export default function App() {
             <p>
               Saldo:
               {" "}
-              R$ {(receitasRicardo - despesasRicardo).toFixed(2)}
+              R$ {
+                (
+                  receitasRicardo -
+                  despesasRicardo
+                ).toFixed(2)
+              }
             </p>
 
           </div>
 
-          <div>
+          <div
+            style={{
+              background:"#0f172a",
+              padding:20,
+              borderRadius:16
+            }}
+          >
 
-            <h3 style={{ color:"#3b82f6" }}>
+            <h3 style={{ color:"#8b5cf6" }}>
               Larissa
             </h3>
 
@@ -858,15 +1019,26 @@ export default function App() {
             <p>
               Saldo:
               {" "}
-              R$ {(receitasLarissa - despesasLarissa).toFixed(2)}
+              R$ {
+                (
+                  receitasLarissa -
+                  despesasLarissa
+                ).toFixed(2)
+              }
             </p>
 
           </div>
 
-          <div>
+          <div
+            style={{
+              background:"#0f172a",
+              padding:20,
+              borderRadius:16
+            }}
+          >
 
-            <h3 style={{ color:"#f59e0b" }}>
-              Consolidado
+            <h3 style={{ color:"#06b6d4" }}>
+              Consolidado Geral
             </h3>
 
             <p>
@@ -879,6 +1051,12 @@ export default function App() {
               Despesas:
               {" "}
               R$ {despesas.toFixed(2)}
+            </p>
+
+            <p>
+              Impostos:
+              {" "}
+              R$ {impostos.toFixed(2)}
             </p>
 
             <p>
