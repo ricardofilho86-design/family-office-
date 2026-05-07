@@ -33,8 +33,6 @@ export default function App() {
 
   const [form, setForm] = useState({
 
-    tipo:"Receita",
-
     pessoa:"Ricardo",
 
     origem:"PJ",
@@ -74,13 +72,23 @@ export default function App() {
     "#eab308"
   ];
 
+  /*
+    =========================
+    CARREGAR DADOS
+    =========================
+  */
+
   async function carregar() {
 
-    const { data } =
+    const { data, error } =
       await supabase
         .from("transactions")
         .select("*")
         .order("data", { ascending:true });
+
+    if(error) {
+      console.log(error);
+    }
 
     setDados(data || []);
 
@@ -97,6 +105,12 @@ export default function App() {
     carregar();
   },[]);
 
+  /*
+    =========================
+    FILTROS DE DATA
+    =========================
+  */
+
   const filtrados = useMemo(()=>{
 
     return dados.filter(d=>{
@@ -110,7 +124,13 @@ export default function App() {
       if(fim) {
 
         const dataFim = new Date(fim);
-        dataFim.setHours(23,59,59,999);
+
+        dataFim.setHours(
+          23,
+          59,
+          59,
+          999
+        );
 
         if(data > dataFim) {
           return false;
@@ -123,138 +143,595 @@ export default function App() {
 
   },[dados,inicio,fim]);
 
-  const investimentosFiltrados = useMemo(()=>{
+  const investimentosFiltrados =
+    useMemo(()=>{
 
-    return invest.filter(i=>{
+      return invest.filter(i=>{
 
-      const data = new Date(i.data);
+        const data = new Date(i.data);
 
-      if(inicio && data < new Date(inicio)) {
-        return false;
-      }
-
-      if(fim) {
-
-        const dataFim = new Date(fim);
-        dataFim.setHours(23,59,59,999);
-
-        if(data > dataFim) {
+        if(
+          inicio &&
+          data < new Date(inicio)
+        ) {
           return false;
         }
-      }
 
-      return true;
+        if(fim) {
 
-    });
+          const dataFim =
+            new Date(fim);
 
-  },[invest,inicio,fim]);
+          dataFim.setHours(
+            23,
+            59,
+            59,
+            999
+          );
+
+          if(data > dataFim) {
+            return false;
+          }
+        }
+
+        return true;
+
+      });
+
+    },[invest,inicio,fim]);
+
+  /*
+    =========================
+    RECEITAS
+    =========================
+  */
 
   const receitas = filtrados
-    .filter(d=>d.tipo==="Receita")
-    .reduce((a,b)=>a+Number(b.valor),0);
+    .filter(
+      d=>
+
+        String(d.tipo)
+          .toLowerCase()
+          .trim() === "receita"
+    )
+    .reduce(
+      (a,b)=>
+        a + Number(b.valor || 0),
+      0
+    );
+
+  /*
+    =========================
+    DESPESAS
+    =========================
+  */
 
   const despesas = filtrados
-    .filter(d=>d.tipo==="Despesa")
-    .reduce((a,b)=>a+Number(b.valor),0);
+    .filter(
+      d=>
+
+        String(d.tipo)
+          .toLowerCase()
+          .trim() === "despesa"
+    )
+    .reduce(
+      (a,b)=>
+        a + Number(b.valor || 0),
+      0
+    );
+
+  /*
+    =========================
+    IMPOSTOS
+    =========================
+  */
 
   const impostos = filtrados
     .filter(
       d=>
-        d.tipo==="Despesa" &&
-        d.categoria==="Impostos"
+
+        String(d.tipo)
+          .toLowerCase()
+          .trim() === "despesa"
+
+        &&
+
+        String(d.categoria)
+          .toLowerCase()
+          .trim() === "impostos"
     )
-    .reduce((a,b)=>a+Number(b.valor),0);
+    .reduce(
+      (a,b)=>
+        a + Number(b.valor || 0),
+      0
+    );
 
-  const investimentos = investimentosFiltrados
-    .reduce((acc,i)=>{
+  /*
+    =========================
+    INVESTIMENTOS
+    =========================
+  */
 
-      if(i.tipo_movimento==="Aporte") {
-        return acc + Number(i.valor);
-      }
+  const investimentos =
+    investimentosFiltrados
+      .reduce((acc,i)=>{
 
-      return acc - Number(i.valor);
+        if(
 
-    },0);
+          String(i.tipo_movimento)
+            .toLowerCase()
+            .trim() === "aporte"
+
+        ) {
+
+          return (
+            acc +
+            Number(i.valor || 0)
+          );
+        }
+
+        return (
+          acc -
+          Number(i.valor || 0)
+        );
+
+      },0);
+
+  /*
+    =========================
+    PATRIMÔNIO
+    =========================
+  */
 
   const patrimonio =
-    receitas -
-    despesas +
+
+    receitas
+    -
+    despesas
+    +
     investimentos;
 
-  const receitasRicardo = filtrados
-    .filter(
-      d=>
-        d.tipo==="Receita" &&
-        d.pessoa==="Ricardo"
-    )
-    .reduce((a,b)=>a+Number(b.valor),0);
+  /*
+    =========================
+    CONSOLIDAÇÃO
+    =========================
+  */
 
-  const receitasLarissa = filtrados
-    .filter(
-      d=>
-        d.tipo==="Receita" &&
-        d.pessoa==="Larissa"
-    )
-    .reduce((a,b)=>a+Number(b.valor),0);
+  const receitasRicardo =
+    filtrados
+      .filter(
+        d=>
 
-  const despesasRicardo = filtrados
-    .filter(
-      d=>
-        d.tipo==="Despesa" &&
-        d.pessoa==="Ricardo"
-    )
-    .reduce((a,b)=>a+Number(b.valor),0);
+          String(d.tipo)
+            .toLowerCase()
+            .trim() === "receita"
 
-  const despesasLarissa = filtrados
-    .filter(
-      d=>
-        d.tipo==="Despesa" &&
-        d.pessoa==="Larissa"
-    )
-    .reduce((a,b)=>a+Number(b.valor),0);
+          &&
+
+          d.pessoa === "Ricardo"
+      )
+      .reduce(
+        (a,b)=>
+          a + Number(b.valor || 0),
+        0
+      );
+
+  const despesasRicardo =
+    filtrados
+      .filter(
+        d=>
+
+          String(d.tipo)
+            .toLowerCase()
+            .trim() === "despesa"
+
+          &&
+
+          d.pessoa === "Ricardo"
+      )
+      .reduce(
+        (a,b)=>
+          a + Number(b.valor || 0),
+        0
+      );
+
+  const receitasLarissa =
+    filtrados
+      .filter(
+        d=>
+
+          String(d.tipo)
+            .toLowerCase()
+            .trim() === "receita"
+
+          &&
+
+          d.pessoa === "Larissa"
+      )
+      .reduce(
+        (a,b)=>
+          a + Number(b.valor || 0),
+        0
+      );
+
+  const despesasLarissa =
+    filtrados
+      .filter(
+        d=>
+
+          String(d.tipo)
+            .toLowerCase()
+            .trim() === "despesa"
+
+          &&
+
+          d.pessoa === "Larissa"
+      )
+      .reduce(
+        (a,b)=>
+          a + Number(b.valor || 0),
+        0
+      );
+
+  /*
+    =========================
+    RELATÓRIO SEMANAL
+    =========================
+  */
+
+  const receitasSemana =
+    filtrados
+      .filter(d=>{
+
+        const data =
+          new Date(d.data);
+
+        const hoje =
+          new Date();
+
+        const dias =
+          (
+            hoje - data
+          ) /
+          (
+            1000 *
+            60 *
+            60 *
+            24
+          );
+
+        return (
+
+          String(d.tipo)
+            .toLowerCase()
+            .trim() === "receita"
+
+          &&
+
+          dias <= 7
+
+        );
+
+      })
+      .reduce(
+        (a,b)=>
+          a + Number(b.valor || 0),
+        0
+      );
+
+  const despesasSemana =
+    filtrados
+      .filter(d=>{
+
+        const data =
+          new Date(d.data);
+
+        const hoje =
+          new Date();
+
+        const dias =
+          (
+            hoje - data
+          ) /
+          (
+            1000 *
+            60 *
+            60 *
+            24
+          );
+
+        return (
+
+          String(d.tipo)
+            .toLowerCase()
+            .trim() === "despesa"
+
+          &&
+
+          dias <= 7
+
+        );
+
+      })
+      .reduce(
+        (a,b)=>
+          a + Number(b.valor || 0),
+        0
+      );
+
+  /*
+    =========================
+    RELATÓRIO MENSAL
+    =========================
+  */
+
+  const receitasMes =
+    filtrados
+      .filter(d=>{
+
+        const data =
+          new Date(d.data);
+
+        const hoje =
+          new Date();
+
+        return (
+
+          String(d.tipo)
+            .toLowerCase()
+            .trim() === "receita"
+
+          &&
+
+          data.getMonth()
+            === hoje.getMonth()
+
+          &&
+
+          data.getFullYear()
+            === hoje.getFullYear()
+
+        );
+
+      })
+      .reduce(
+        (a,b)=>
+          a + Number(b.valor || 0),
+        0
+      );
+
+  const despesasMes =
+    filtrados
+      .filter(d=>{
+
+        const data =
+          new Date(d.data);
+
+        const hoje =
+          new Date();
+
+        return (
+
+          String(d.tipo)
+            .toLowerCase()
+            .trim() === "despesa"
+
+          &&
+
+          data.getMonth()
+            === hoje.getMonth()
+
+          &&
+
+          data.getFullYear()
+            === hoje.getFullYear()
+
+        );
+
+      })
+      .reduce(
+        (a,b)=>
+          a + Number(b.valor || 0),
+        0
+      );
+
+  /*
+    =========================
+    SALVAR RECEITA
+    =========================
+  */
 
   async function salvarReceita() {
 
-    const valor = Number(form.valor);
+    const valor =
+      Number(form.valor);
 
-    await supabase
-      .from("transactions")
-      .insert([{
+    /*
+      SALVA RECEITA
+    */
 
-        tipo:"Receita",
+    const { error } =
+      await supabase
+        .from("transactions")
+        .insert([{
 
-        pessoa:form.pessoa,
+          tipo:"Receita",
 
-        origem:form.origem,
+          pessoa:form.pessoa,
 
-        categoria:form.categoria,
+          origem:form.origem,
 
-        descricao:form.descricao,
+          categoria:form.categoria,
 
-        valor,
+          descricao:form.descricao,
 
-        tributavel:form.tributavel,
+          valor:valor,
 
-        data:new Date()
+          tributavel:
+            form.tributavel,
 
-      }]);
+          data:
+            new Date()
+              .toISOString()
+
+        }]);
+
+    if(error) {
+
+      alert(
+        "Erro ao salvar receita: " +
+        error.message
+      );
+
+      return;
+    }
+
+    /*
+      =====================
+      CÁLCULO IMPOSTO
+      =====================
+    */
 
     let imposto = 0;
 
-    if(form.origem==="PJ") {
+    /*
+      PJ = 15%
+    */
 
-      imposto = valor * 0.15;
+    if(
+      form.origem === "PJ"
+    ) {
 
-    } else if(
+      imposto =
+        valor * 0.15;
+    }
 
-      form.origem==="PF" &&
-      form.tributavel === true &&
-      valor > 5000
+    /*
+      LUCROS ISENTOS
+    */
+
+    else if(
+      form.origem === "Lucros"
+    ) {
+
+      imposto = 0;
+    }
+
+    /*
+      PF TRIBUTÁVEL
+      NOVA REGRA 2026
+    */
+
+    else if(
+
+      form.origem === "PF"
+
+      &&
+
+      form.tributavel === true
 
     ) {
 
-      imposto = valor * 0.275;
+      /*
+        ISENÇÃO
+      */
+
+      if(valor <= 5000) {
+
+        imposto = 0;
+      }
+
+      else {
+
+        let aliquota = 0;
+        let deducao = 0;
+
+        /*
+          TABELA
+        */
+
+        if(valor <= 2826.65) {
+
+          aliquota = 0.075;
+          deducao = 182.16;
+
+        }
+
+        else if(
+          valor <= 3751.05
+        ) {
+
+          aliquota = 0.15;
+          deducao = 394.16;
+
+        }
+
+        else if(
+          valor <= 4664.68
+        ) {
+
+          aliquota = 0.225;
+          deducao = 675.49;
+
+        }
+
+        else {
+
+          aliquota = 0.275;
+          deducao = 908.73;
+
+        }
+
+        imposto =
+
+          (
+            valor *
+            aliquota
+          )
+
+          -
+
+          deducao;
+
+        /*
+          REDUTOR
+          5K -> 7.35K
+        */
+
+        if(valor <= 7350) {
+
+          const redutor =
+
+            978.62
+
+            -
+
+            (
+              0.133145 *
+              valor
+            );
+
+          imposto =
+            imposto -
+            redutor;
+        }
+
+        if(imposto < 0) {
+          imposto = 0;
+        }
+
+      }
+
     }
+
+    imposto =
+      Number(
+        imposto.toFixed(2)
+      );
+
+    /*
+      SALVAR IMPOSTO
+    */
 
     if(imposto > 0) {
 
@@ -270,18 +747,23 @@ export default function App() {
 
           categoria:"Impostos",
 
-          descricao:`Imposto automático sobre ${form.origem}`,
+          descricao:
+            `IR automático sobre ${form.origem}`,
 
           valor:imposto,
 
-          data:new Date()
+          data:
+            new Date()
+              .toISOString()
 
         }]);
     }
 
-    setForm({
+    /*
+      RESET
+    */
 
-      tipo:"Receita",
+    setForm({
 
       pessoa:"Ricardo",
 
@@ -299,86 +781,106 @@ export default function App() {
 
     carregar();
   }
+
+  /*
+    =========================
+    SALVAR DESPESA
+    =========================
+  */
 
   async function salvarDespesa() {
 
-    await supabase
-      .from("transactions")
-      .insert([{
+    const { error } =
+      await supabase
+        .from("transactions")
+        .insert([{
 
-        tipo:"Despesa",
+          tipo:"Despesa",
 
-        pessoa:form.pessoa,
+          pessoa:form.pessoa,
 
-        origem:"Despesa",
+          origem:"Despesa",
 
-        categoria:form.categoria,
+          categoria:form.categoria,
 
-        descricao:form.descricao,
+          descricao:form.descricao,
 
-        valor:Number(form.valor),
+          valor:
+            Number(form.valor),
 
-        data:new Date()
+          data:
+            new Date()
+              .toISOString()
 
-      }]);
+        }]);
 
-    setForm({
+    if(error) {
 
-      tipo:"Receita",
+      alert(
+        "Erro ao salvar despesa: " +
+        error.message
+      );
 
-      pessoa:"Ricardo",
-
-      origem:"PJ",
-
-      categoria:"Consultas",
-
-      descricao:"",
-
-      valor:"",
-
-      tributavel:true
-
-    });
+      return;
+    }
 
     carregar();
   }
+
+  /*
+    =========================
+    SALVAR INVESTIMENTO
+    =========================
+  */
 
   async function salvarInvest() {
 
-    await supabase
-      .from("investimentos")
-      .insert([{
+    const { error } =
+      await supabase
+        .from("investimentos")
+        .insert([{
 
-        nome:formInvest.nome,
+          nome:
+            formInvest.nome,
 
-        pessoa:formInvest.pessoa,
+          pessoa:
+            formInvest.pessoa,
 
-        categoria:formInvest.categoria,
+          categoria:
+            formInvest.categoria,
 
-        tipo_movimento:formInvest.tipo_movimento,
+          tipo_movimento:
+            formInvest.tipo_movimento,
 
-        valor:Number(formInvest.valor),
+          valor:
+            Number(
+              formInvest.valor
+            ),
 
-        data:new Date()
+          data:
+            new Date()
+              .toISOString()
 
-      }]);
+        }]);
 
-    setFormInvest({
+    if(error) {
 
-      nome:"",
+      alert(
+        "Erro ao salvar investimento: " +
+        error.message
+      );
 
-      pessoa:"Ricardo",
-
-      categoria:"Renda Fixa",
-
-      tipo_movimento:"Aporte",
-
-      valor:""
-
-    });
+      return;
+    }
 
     carregar();
   }
+
+  /*
+    =========================
+    GRÁFICOS
+    =========================
+  */
 
   const graficoReceitaDespesa = [
 
@@ -394,29 +896,47 @@ export default function App() {
 
   ];
 
-  const despesasCategoria = Object.values(
+  const despesasCategoria =
+    Object.values(
 
-    filtrados
-      .filter(d=>d.tipo==="Despesa")
-      .reduce((acc,item)=>{
+      filtrados
+        .filter(
+          d=>
 
-        if(!acc[item.categoria]) {
+            String(d.tipo)
+              .toLowerCase()
+              .trim() === "despesa"
+        )
+        .reduce((acc,item)=>{
 
-          acc[item.categoria] = {
+          if(
+            !acc[item.categoria]
+          ) {
 
-            name:item.categoria,
+            acc[item.categoria] = {
 
-            value:0
-          };
-        }
+              name:
+                item.categoria,
 
-        acc[item.categoria].value += Number(item.valor);
+              value:0
+            };
+          }
 
-        return acc;
+          acc[item.categoria]
+            .value +=
+              Number(item.valor);
 
-      },{})
+          return acc;
 
-  );
+        },{})
+
+    );
+
+  /*
+    =========================
+    EVOLUÇÃO PATRIMONIAL
+    =========================
+  */
 
   const patrimonioEvolucao = [];
 
@@ -429,33 +949,62 @@ export default function App() {
       data:d.data,
 
       valor:
-        d.tipo==="Receita"
-          ? Number(d.valor)
-          : -Number(d.valor)
+
+        String(d.tipo)
+          .toLowerCase()
+          .trim() === "receita"
+
+          ?
+
+          Number(d.valor)
+
+          :
+
+          -Number(d.valor)
 
     })),
 
-    ...investimentosFiltrados.map(i=>({
+    ...investimentosFiltrados
+      .map(i=>({
 
-      data:i.data,
+        data:i.data,
 
-      valor:
-        i.tipo_movimento==="Aporte"
-          ? Number(i.valor)
-          : -Number(i.valor)
+        valor:
 
-    }))
+          String(i.tipo_movimento)
+            .toLowerCase()
+            .trim() === "aporte"
+
+            ?
+
+            Number(i.valor)
+
+            :
+
+            -Number(i.valor)
+
+      }))
 
   ]
-  .sort((a,b)=>new Date(a.data)-new Date(b.data))
+
+  .sort(
+    (a,b)=>
+
+      new Date(a.data)
+      -
+      new Date(b.data)
+  )
+
   .forEach(item=>{
 
     acumulado += item.valor;
 
     patrimonioEvolucao.push({
 
-      data:new Date(item.data)
-        .toLocaleDateString(),
+      data:
+
+        new Date(item.data)
+          .toLocaleDateString(),
 
       patrimonio:acumulado
 
@@ -463,110 +1012,61 @@ export default function App() {
 
   });
 
-  const carteira = Object.values(
+  /*
+    =========================
+    CARTEIRA XP
+    =========================
+  */
 
-    investimentosFiltrados.reduce((acc,i)=>{
+  const carteira =
+    Object.values(
 
-      const valor =
+      investimentosFiltrados
+        .reduce((acc,i)=>{
 
-        i.tipo_movimento==="Aporte"
-          ? Number(i.valor)
-          : -Number(i.valor);
+          const valor =
 
-      if(!acc[i.categoria]) {
+            String(i.tipo_movimento)
+              .toLowerCase()
+              .trim() === "aporte"
 
-        acc[i.categoria] = {
+              ?
 
-          name:i.categoria,
+              Number(i.valor)
 
-          value:0
-        };
-      }
+              :
 
-      acc[i.categoria].value += valor;
+              -Number(i.valor);
 
-      return acc;
+          if(
+            !acc[i.categoria]
+          ) {
 
-    },{})
+            acc[i.categoria] = {
 
-  ).filter(i=>i.value > 0);
+              name:i.categoria,
+
+              value:0
+            };
+          }
+
+          acc[i.categoria]
+            .value += valor;
+
+          return acc;
+
+        },{})
+
+    )
+    .filter(i=>i.value > 0);
 
   const totalCarteira =
-    carteira.reduce((a,b)=>a+b.value,0);
 
-  const receitasSemana = filtrados
-    .filter(d=>{
-
-      const data = new Date(d.data);
-      const hoje = new Date();
-
-      const diff =
-        (hoje - data) /
-        (1000*60*60*24);
-
-      return (
-        d.tipo==="Receita" &&
-        diff <= 7
-      );
-
-    })
-    .reduce((a,b)=>a+Number(b.valor),0);
-
-  const despesasSemana = filtrados
-    .filter(d=>{
-
-      const data = new Date(d.data);
-      const hoje = new Date();
-
-      const diff =
-        (hoje - data) /
-        (1000*60*60*24);
-
-      return (
-        d.tipo==="Despesa" &&
-        diff <= 7
-      );
-
-    })
-    .reduce((a,b)=>a+Number(b.valor),0);
-
-  const receitasMes = filtrados
-    .filter(d=>{
-
-      const data = new Date(d.data);
-      const hoje = new Date();
-
-      return (
-
-        d.tipo==="Receita" &&
-
-        data.getMonth() === hoje.getMonth() &&
-
-        data.getFullYear() === hoje.getFullYear()
-
-      );
-
-    })
-    .reduce((a,b)=>a+Number(b.valor),0);
-
-  const despesasMes = filtrados
-    .filter(d=>{
-
-      const data = new Date(d.data);
-      const hoje = new Date();
-
-      return (
-
-        d.tipo==="Despesa" &&
-
-        data.getMonth() === hoje.getMonth() &&
-
-        data.getFullYear() === hoje.getFullYear()
-
-      );
-
-    })
-    .reduce((a,b)=>a+Number(b.valor),0);
+    carteira.reduce(
+      (a,b)=>
+        a + b.value,
+      0
+    );
 
   return (
 
@@ -602,7 +1102,12 @@ export default function App() {
         <input
           type="date"
           value={inicio}
-          onChange={e=>setInicio(e.target.value)}
+          onChange={
+            e=>
+              setInicio(
+                e.target.value
+              )
+          }
           style={{
             padding:10,
             borderRadius:8
@@ -612,7 +1117,12 @@ export default function App() {
         <input
           type="date"
           value={fim}
-          onChange={e=>setFim(e.target.value)}
+          onChange={
+            e=>
+              setFim(
+                e.target.value
+              )
+          }
           style={{
             padding:10,
             borderRadius:8
@@ -636,40 +1146,29 @@ export default function App() {
       <div
         style={{
           display:"grid",
-          gridTemplateColumns:"repeat(auto-fit,minmax(350px,1fr))",
+          gridTemplateColumns:
+            "repeat(auto-fit,minmax(350px,1fr))",
           gap:20,
           marginTop:30
         }}
       >
 
         <ReceitaForm
-
           form={form}
-
           setForm={setForm}
-
           salvar={salvarReceita}
-
         />
 
         <DespesaForm
-
           form={form}
-
           setForm={setForm}
-
           salvar={salvarDespesa}
-
         />
 
         <InvestimentoForm
-
           formInvest={formInvest}
-
           setFormInvest={setFormInvest}
-
           salvarInvest={salvarInvest}
-
         />
 
       </div>
@@ -678,7 +1177,8 @@ export default function App() {
         style={{
           marginTop:40,
           display:"grid",
-          gridTemplateColumns:"repeat(auto-fit,minmax(450px,1fr))",
+          gridTemplateColumns:
+            "repeat(auto-fit,minmax(450px,1fr))",
           gap:30
         }}
       >
@@ -703,21 +1203,31 @@ export default function App() {
             <PieChart>
 
               <Pie
-                data={graficoReceitaDespesa}
+                data={
+                  graficoReceitaDespesa
+                }
                 dataKey="value"
                 nameKey="name"
                 outerRadius={120}
                 label
               >
 
-                {graficoReceitaDespesa.map((_,i)=>(
+                {
+                  graficoReceitaDespesa
+                    .map((_,i)=>(
 
-                  <Cell
-                    key={i}
-                    fill={COLORS[i % COLORS.length]}
-                  />
+                    <Cell
+                      key={i}
+                      fill={
+                        COLORS[
+                          i %
+                          COLORS.length
+                        ]
+                      }
+                    />
 
-                ))}
+                  ))
+                }
 
               </Pie>
 
@@ -747,9 +1257,13 @@ export default function App() {
             height={350}
           >
 
-            <BarChart data={despesasCategoria}>
+            <BarChart
+              data={despesasCategoria}
+            >
 
-              <CartesianGrid strokeDasharray="3 3"/>
+              <CartesianGrid
+                strokeDasharray="3 3"
+              />
 
               <XAxis dataKey="name"/>
 
@@ -787,9 +1301,15 @@ export default function App() {
             height={350}
           >
 
-            <LineChart data={patrimonioEvolucao}>
+            <LineChart
+              data={
+                patrimonioEvolucao
+              }
+            >
 
-              <CartesianGrid strokeDasharray="3 3"/>
+              <CartesianGrid
+                strokeDasharray="3 3"
+              />
 
               <XAxis dataKey="data"/>
 
@@ -836,25 +1356,49 @@ export default function App() {
                 dataKey="value"
                 nameKey="name"
                 outerRadius={120}
-                label={({ name, value }) => {
+
+                label={({
+                  name,
+                  value
+                })=>{
 
                   const percentual =
-                    totalCarteira > 0
-                      ? ((value / totalCarteira) * 100).toFixed(1)
-                      : 0;
 
-                  return `${name} ${percentual}%`;
+                    totalCarteira > 0
+
+                    ?
+
+                    (
+                      (
+                        value /
+                        totalCarteira
+                      ) * 100
+                    ).toFixed(1)
+
+                    :
+
+                    0;
+
+                  return
+                    `${name} ${percentual}%`;
                 }}
               >
 
-                {carteira.map((_,i)=>(
+                {
+                  carteira.map((_,i)=>(
 
-                  <Cell
-                    key={i}
-                    fill={COLORS[i % COLORS.length]}
-                  />
+                    <Cell
+                      key={i}
+                      fill={
+                        COLORS[
+                          i %
+                          COLORS.length
+                        ]
+                      }
+                    />
 
-                ))}
+                  ))
+                }
 
               </Pie>
 
@@ -885,7 +1429,8 @@ export default function App() {
         <div
           style={{
             display:"grid",
-            gridTemplateColumns:"repeat(auto-fit,minmax(300px,1fr))",
+            gridTemplateColumns:
+              "repeat(auto-fit,minmax(300px,1fr))",
             gap:20,
             marginTop:20
           }}
@@ -906,19 +1451,36 @@ export default function App() {
             <p>
               Receitas:
               {" "}
-              R$ {receitasSemana.toFixed(2)}
+              R$
+              {" "}
+              {
+                receitasSemana
+                  .toFixed(2)
+              }
             </p>
 
             <p>
               Despesas:
               {" "}
-              R$ {despesasSemana.toFixed(2)}
+              R$
+              {" "}
+              {
+                despesasSemana
+                  .toFixed(2)
+              }
             </p>
 
             <p>
               Saldo:
               {" "}
-              R$ {(receitasSemana - despesasSemana).toFixed(2)}
+              R$
+              {" "}
+              {
+                (
+                  receitasSemana -
+                  despesasSemana
+                ).toFixed(2)
+              }
             </p>
 
           </div>
@@ -938,19 +1500,36 @@ export default function App() {
             <p>
               Receitas:
               {" "}
-              R$ {receitasMes.toFixed(2)}
+              R$
+              {" "}
+              {
+                receitasMes
+                  .toFixed(2)
+              }
             </p>
 
             <p>
               Despesas:
               {" "}
-              R$ {despesasMes.toFixed(2)}
+              R$
+              {" "}
+              {
+                despesasMes
+                  .toFixed(2)
+              }
             </p>
 
             <p>
               Saldo:
               {" "}
-              R$ {(receitasMes - despesasMes).toFixed(2)}
+              R$
+              {" "}
+              {
+                (
+                  receitasMes -
+                  despesasMes
+                ).toFixed(2)
+              }
             </p>
 
           </div>
@@ -970,19 +1549,31 @@ export default function App() {
             <p>
               Receitas:
               {" "}
-              R$ {receitasRicardo.toFixed(2)}
+              R$
+              {" "}
+              {
+                receitasRicardo
+                  .toFixed(2)
+              }
             </p>
 
             <p>
               Despesas:
               {" "}
-              R$ {despesasRicardo.toFixed(2)}
+              R$
+              {" "}
+              {
+                despesasRicardo
+                  .toFixed(2)
+              }
             </p>
 
             <p>
               Saldo:
               {" "}
-              R$ {
+              R$
+              {" "}
+              {
                 (
                   receitasRicardo -
                   despesasRicardo
@@ -1007,19 +1598,31 @@ export default function App() {
             <p>
               Receitas:
               {" "}
-              R$ {receitasLarissa.toFixed(2)}
+              R$
+              {" "}
+              {
+                receitasLarissa
+                  .toFixed(2)
+              }
             </p>
 
             <p>
               Despesas:
               {" "}
-              R$ {despesasLarissa.toFixed(2)}
+              R$
+              {" "}
+              {
+                despesasLarissa
+                  .toFixed(2)
+              }
             </p>
 
             <p>
               Saldo:
               {" "}
-              R$ {
+              R$
+              {" "}
+              {
                 (
                   receitasLarissa -
                   despesasLarissa
@@ -1044,31 +1647,56 @@ export default function App() {
             <p>
               Receitas:
               {" "}
-              R$ {receitas.toFixed(2)}
+              R$
+              {" "}
+              {
+                receitas
+                  .toFixed(2)
+              }
             </p>
 
             <p>
               Despesas:
               {" "}
-              R$ {despesas.toFixed(2)}
+              R$
+              {" "}
+              {
+                despesas
+                  .toFixed(2)
+              }
             </p>
 
             <p>
               Impostos:
               {" "}
-              R$ {impostos.toFixed(2)}
+              R$
+              {" "}
+              {
+                impostos
+                  .toFixed(2)
+              }
             </p>
 
             <p>
               Investimentos:
               {" "}
-              R$ {investimentos.toFixed(2)}
+              R$
+              {" "}
+              {
+                investimentos
+                  .toFixed(2)
+              }
             </p>
 
             <p>
               Patrimônio:
               {" "}
-              R$ {patrimonio.toFixed(2)}
+              R$
+              {" "}
+              {
+                patrimonio
+                  .toFixed(2)
+              }
             </p>
 
           </div>
