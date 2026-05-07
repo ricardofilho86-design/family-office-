@@ -43,6 +43,9 @@ export default function App() {
   const [salvandoReceita, setSalvandoReceita] =
     useState(false);
 
+const [ultimaReceita, setUltimaReceita] =
+  useState(null);
+
   const [form, setForm] = useState({
 
     pessoa:"Ricardo",
@@ -507,18 +510,30 @@ const patrimonio =
   =====================================================
   */
 
-  async function salvarReceita() {
+ async function salvarReceita() {
 
-    if(salvandoReceita) {
-      return;
-    }
+  const agora = Date.now();
 
-    setSalvandoReceita(true);
+  if(
+    ultimaReceita
+    &&
+    agora - ultimaReceita < 3000
+  ) {
+    return;
+  }
 
-    try {
+  setUltimaReceita(agora);
 
-      const valor =
-        Number(form.valor);
+  if(salvandoReceita) {
+    return;
+  }
+
+  setSalvandoReceita(true);
+
+  try {
+
+    const valor =
+      Number(form.valor);
 
       /*
       RECEITA
