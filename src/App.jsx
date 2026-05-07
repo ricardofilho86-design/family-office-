@@ -1,11 +1,36 @@
 import { useEffect, useState } from "react";
 import { supabase } from "./lib/supabase";
+
 import {
-  LineChart, Line, PieChart, Pie, Cell,
-  Tooltip, XAxis, YAxis, CartesianGrid
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Legend,
+  ResponsiveContainer
 } from "recharts";
 
+const COLORS = [
+  "#22c55e",
+  "#ef4444",
+  "#3b82f6",
+  "#f59e0b",
+  "#8b5cf6",
+  "#06b6d4",
+  "#14b8a6",
+  "#f97316"
+];
+
 export default function App() {
+
+  // =========================
+  // ESTADOS
+  // =========================
 
   const [dados, setDados] = useState([]);
   const [invest, setInvest] = useState([]);
@@ -19,6 +44,7 @@ export default function App() {
     tipo: "Receita",
     pessoa: "Ricardo",
     origem: "PJ",
+    tributavel: true,
     categoria: "Consultas",
     descricao: "",
     valor: ""
@@ -31,11 +57,24 @@ export default function App() {
     valor: ""
   });
 
+  // =========================
+  // LOAD
+  // =========================
+
   async function carregar() {
-    const { data } = await supabase.from("transactions").select("*");
+
+    const { data } = await supabase
+      .from("transactions")
+      .select("*")
+      .order("data");
+
     setDados(data || []);
 
-    const { data: inv } = await supabase.from("investimentos").select("*").order("data");
+    const { data: inv } = await supabase
+      .from("investimentos")
+      .select("*")
+      .order("data");
+
     setInvest(inv || []);
   }
 
@@ -43,16 +82,28 @@ export default function App() {
     carregar();
   }, []);
 
+  // =========================
+  // FILTRO
+  // =========================
+
   function filtrar() {
+
     return dados.filter(d => {
+
       const data = new Date(d.data);
+
       if (inicio && new Date(inicio) > data) return false;
       if (fim && new Date(fim) < data) return false;
+
       return true;
     });
   }
 
   const filtrados = filtrar();
+
+  // =========================
+  // RECEITAS / DESPESAS
+  // =========================
 
   const totalReceita = filtrados
     .filter(d => d.tipo === "Receita")
@@ -64,264 +115,801 @@ export default function App() {
 
   const saldo = totalReceita - totalDespesa;
 
+  // =========================
   // INVESTIMENTOS
+  // =========================
+
   const totalInvest = invest.reduce((acc,i)=>{
-    if(i.tipo_movimento==="Aporte") return acc + Number(i.valor);
-    if(i.tipo_movimento==="Resgate") return acc - Number(i.valor);
+
+    if(i.tipo_movimento === "Aporte") {
+      return acc + Number(i.valor);
+    }
+
+    if(i.tipo_movimento === "Resgate") {
+      return acc - Number(i.valor);
+    }
+
     return acc;
+
   },0);
+
+  // =========================
+  // PATRIMÔNIO
+  // =========================
 
   const patrimonio = saldo + totalInvest;
 
-  // EVOLUÇÃO COMPLETA (com investimentos)
-  const evolucao = [];
+  // =========================
+  // EVOLUÇÃO PATRIMONIAL
+  // =========================
+
   let acumulado = 0;
 
-  const eventos = [
+  const evolucao = [];
+
+  const eventosFinanceiros = [
+
     ...dados.map(d => ({
       data: d.data,
-      valor: d.tipo === "Receita" ? Number(d.valor) : -Number(d.valor)
+      valor:
+        d.tipo === "Receita"
+          ? Number(d.valor)
+          : -Number(d.valor)
     })),
+
     ...invest.map(i => ({
       data: i.data,
-      valor: i.tipo_movimento === "Aporte"
-        ? Number(i.valor)
-        : -Number(i.valor)
+      valor:
+        i.tipo_movimento === "Aporte"
+          ? Number(i.valor)
+          : -Number(i.valor)
     }))
   ];
 
-  eventos.sort((a,b)=>new Date(a.data)-new Date(b.data));
+  eventosFinanceiros.sort(
+    (a,b)=>new Date(a.data)-new Date(b.data)
+  );
 
-  eventos.forEach(e=>{
+  eventosFinanceiros.forEach(e => {
+
     acumulado += e.valor;
+
     evolucao.push({
       data: new Date(e.data).toLocaleDateString(),
       patrimonio: acumulado
     });
   });
 
-  // CARTEIRA XP STYLE
+  // =========================
+  // CARTEIRA XP
+  // =========================
+
   const carteira = Object.values(
-    invest.reduce((acc, i) => {
+
+    invest.reduce((acc,i)=>{
+
       const valor =
         i.tipo_movimento === "Aporte"
           ? Number(i.valor)
           : -Number(i.valor);
 
-      if (!acc[i.categoria]) {
-        acc[i.categoria] = { name: i.categoria, value: 0 };
+      if(!acc[i.categoria]) {
+
+        acc[i.categoria] = {
+          name: i.categoria,
+          value: 0
+        };
       }
 
       acc[i.categoria].value += valor;
 
       return acc;
-    }, {})
+
+    },{})
+
   ).filter(i => i.value > 0);
 
-  const totalCarteira = carteira.reduce((a,b)=>a+b.value,0);
+  const totalCarteira =
+    carteira.reduce((a,b)=>a+b.value,0);
 
-  const carteiraPercentual = carteira.map(i => ({
+  const carteiraPercentual = carteira.map(i=>({
+
     ...i,
-    percentual: totalCarteira > 0
-      ? ((i.value / totalCarteira) * 100).toFixed(1)
-      : 0
+
+    percentual:
+      totalCarteira > 0
+        ? ((i.value / totalCarteira) * 100).toFixed(1)
+        : 0
+
   }));
 
+  // =========================
   // GRÁFICOS
+  // =========================
+
   const graficoRD = [
     { name: "Receitas", value: totalReceita },
     { name: "Despesas", value: totalDespesa }
   ];
 
+  // =========================
+  // DESPESAS POR CATEGORIA
+  // =========================
+
+  const despesasCategoria = Object.values(
+
+    filtrados
+      .filter(d => d.tipo === "Despesa")
+      .reduce((acc,item)=>{
+
+        if(!acc[item.categoria]) {
+
+          acc[item.categoria] = {
+            name:item.categoria,
+            value:0
+          };
+        }
+
+        acc[item.categoria].value += Number(item.valor);
+
+        return acc;
+
+      },{})
+
+  );
+
+  // =========================
   // RELATÓRIO
+  // =========================
+
   function gerarRelatorio() {
+
     setRelatorio({
+
       receitas: totalReceita,
+
       despesas: totalDespesa,
+
       saldo,
-      patrimonio
+
+      patrimonio,
+
+      investimentos: totalInvest
     });
   }
 
-  // SALVAR
+  // =========================
+  // SALVAR TRANSAÇÃO
+  // =========================
+
   async function salvar() {
+
+    const valor = Number(form.valor);
+
     await supabase.from("transactions").insert([{
+
       data: new Date(),
+
       ...form,
-      valor: Number(form.valor)
+
+      valor
+
     }]);
 
-    setForm({ ...form, valor:"", descricao:"" });
+    // =====================
+    // IMPOSTO AUTOMÁTICO
+    // =====================
+
+    let imposto = 0;
+
+    // PJ = 15%
+    if (
+      form.tipo === "Receita" &&
+      form.origem === "PJ"
+    ) {
+      imposto = valor * 0.15;
+    }
+
+    // PF = somente acima de 5k e tributável
+    if (
+      form.tipo === "Receita" &&
+      form.origem === "PF" &&
+      form.tributavel === true &&
+      valor > 5000
+    ) {
+      imposto = valor * 0.275;
+    }
+
+    // Lucros = isento
+
+    if (imposto > 0) {
+
+      await supabase.from("transactions").insert([{
+
+        data: new Date(),
+
+        tipo: "Despesa",
+
+        pessoa: form.pessoa,
+
+        origem: "Imposto",
+
+        categoria: "Impostos",
+
+        descricao: `Imposto automático - ${form.origem}`,
+
+        valor: imposto
+
+      }]);
+    }
+
+    setForm({
+      ...form,
+      valor:"",
+      descricao:""
+    });
+
     carregar();
   }
 
+  // =========================
+  // SALVAR INVESTIMENTO
+  // =========================
+
   async function salvarInvest() {
+
     await supabase.from("investimentos").insert([{
+
       ...formInvest,
+
       valor: Number(formInvest.valor),
+
       data: new Date()
+
     }]);
 
     setFormInvest({
+
       nome:"",
+
       categoria:"Renda Fixa",
+
       tipo_movimento:"Aporte",
+
       valor:""
+
     });
 
     carregar();
   }
 
-  return (
-    <div style={{ background:"#0f172a", color:"#fff", minHeight:"100vh", padding:20 }}>
+  // =========================
+  // UI
+  // =========================
 
-      <h1>Family Office</h1>
+  return (
+
+    <div
+      style={{
+        background:"#0f172a",
+        color:"#ffffff",
+        minHeight:"100vh",
+        padding:20,
+        fontFamily:"Arial"
+      }}
+    >
+
+      {/* TÍTULO */}
+      <h1
+        style={{
+          color:"#ffffff",
+          marginBottom:20
+        }}
+      >
+        Family Office
+      </h1>
 
       {/* FILTRO */}
-      <div style={{ display:"flex", gap:10 }}>
-        <input type="date" onChange={e=>setInicio(e.target.value)} />
-        <input type="date" onChange={e=>setFim(e.target.value)} />
+      <div
+        style={{
+          display:"flex",
+          gap:10,
+          marginBottom:20
+        }}
+      >
+
+        <input
+          type="date"
+          onChange={e=>setInicio(e.target.value)}
+        />
+
+        <input
+          type="date"
+          onChange={e=>setFim(e.target.value)}
+        />
+
       </div>
 
       {/* DASHBOARD */}
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:10 }}>
+      <div
+        style={{
+          display:"grid",
+          gridTemplateColumns:"repeat(4,1fr)",
+          gap:15
+        }}
+      >
+
+        <Card title="Receitas" value={totalReceita}/>
+        <Card title="Despesas" value={totalDespesa}/>
         <Card title="Saldo" value={saldo}/>
-        <Card title="Receita" value={totalReceita}/>
-        <Card title="Despesa" value={totalDespesa}/>
         <Card title="Patrimônio" value={patrimonio}/>
+
       </div>
 
       {/* RELATÓRIO */}
       <Section title="Relatório">
-        <button onClick={gerarRelatorio}>Gerar</button>
+
+        <button onClick={gerarRelatorio}>
+          Gerar Relatório
+        </button>
+
         {relatorio && (
-          <>
-            <p>Receitas: R$ {relatorio.receitas.toFixed(2)}</p>
-            <p>Despesas: R$ {relatorio.despesas.toFixed(2)}</p>
-            <p>Saldo: R$ {relatorio.saldo.toFixed(2)}</p>
-            <h3>Patrimônio: R$ {relatorio.patrimonio.toFixed(2)}</h3>
-          </>
+          <div style={{ marginTop:15 }}>
+
+            <p>
+              Receitas:
+              R$ {relatorio.receitas.toFixed(2)}
+            </p>
+
+            <p>
+              Despesas:
+              R$ {relatorio.despesas.toFixed(2)}
+            </p>
+
+            <p>
+              Investimentos:
+              R$ {relatorio.investimentos.toFixed(2)}
+            </p>
+
+            <p>
+              Saldo:
+              R$ {relatorio.saldo.toFixed(2)}
+            </p>
+
+            <h3>
+              Patrimônio:
+              R$ {relatorio.patrimonio.toFixed(2)}
+            </h3>
+
+          </div>
         )}
+
       </Section>
 
-      {/* GRÁFICOS */}
+      {/* RECEITAS X DESPESAS */}
       <Section title="Receitas vs Despesas">
-        <PieChart width={300} height={300}>
-          <Pie data={graficoRD} dataKey="value" outerRadius={100}>
-            {graficoRD.map((_,i)=><Cell key={i}/>)}
-          </Pie>
-          <Tooltip/>
-        </PieChart>
+
+        <ResponsiveContainer width="100%" height={350}>
+
+          <PieChart>
+
+            <Pie
+              data={graficoRD}
+              dataKey="value"
+              nameKey="name"
+              outerRadius={120}
+              label
+            >
+
+              {graficoRD.map((_,i)=>(
+                <Cell
+                  key={i}
+                  fill={COLORS[i % COLORS.length]}
+                />
+              ))}
+
+            </Pie>
+
+            <Tooltip />
+            <Legend />
+
+          </PieChart>
+
+        </ResponsiveContainer>
+
       </Section>
 
+      {/* DESPESAS POR CATEGORIA */}
+      <Section title="Despesas por Categoria">
+
+        <ResponsiveContainer width="100%" height={350}>
+
+          <PieChart>
+
+            <Pie
+              data={despesasCategoria}
+              dataKey="value"
+              nameKey="name"
+              outerRadius={120}
+              label
+            >
+
+              {despesasCategoria.map((_,i)=>(
+                <Cell
+                  key={i}
+                  fill={COLORS[i % COLORS.length]}
+                />
+              ))}
+
+            </Pie>
+
+            <Tooltip />
+            <Legend />
+
+          </PieChart>
+
+        </ResponsiveContainer>
+
+      </Section>
+
+      {/* EVOLUÇÃO */}
       <Section title="Evolução Patrimonial">
-        <LineChart width={500} height={300} data={evolucao}>
-          <CartesianGrid strokeDasharray="3 3"/>
-          <XAxis dataKey="data"/>
-          <YAxis/>
-          <Tooltip/>
-          <Line dataKey="patrimonio"/>
-        </LineChart>
+
+        <ResponsiveContainer width="100%" height={350}>
+
+          <LineChart data={evolucao}>
+
+            <CartesianGrid strokeDasharray="3 3"/>
+
+            <XAxis dataKey="data"/>
+
+            <YAxis/>
+
+            <Tooltip/>
+
+            <Legend/>
+
+            <Line
+              type="monotone"
+              dataKey="patrimonio"
+              stroke="#22c55e"
+              strokeWidth={3}
+            />
+
+          </LineChart>
+
+        </ResponsiveContainer>
+
       </Section>
 
       {/* CARTEIRA XP */}
-      <Section title="Carteira de Investimentos (Estilo XP)">
-        <PieChart width={350} height={350}>
-          <Pie data={carteira} dataKey="value" nameKey="name" outerRadius={120} label>
-            {carteira.map((_,i)=><Cell key={i}/>)}
-          </Pie>
-          <Tooltip/>
-        </PieChart>
+      <Section title="Carteira de Investimentos">
 
-        {carteiraPercentual.map((c,i)=>(
-          <p key={i}>
-            {c.name} — R$ {c.value.toFixed(2)} ({c.percentual}%)
-          </p>
-        ))}
+        <ResponsiveContainer width="100%" height={400}>
+
+          <PieChart>
+
+            <Pie
+              data={carteira}
+              dataKey="value"
+              nameKey="name"
+              outerRadius={140}
+              label
+            >
+
+              {carteira.map((_,i)=>(
+                <Cell
+                  key={i}
+                  fill={COLORS[i % COLORS.length]}
+                />
+              ))}
+
+            </Pie>
+
+            <Tooltip/>
+            <Legend/>
+
+          </PieChart>
+
+        </ResponsiveContainer>
+
+        <div style={{ marginTop:20 }}>
+
+          {carteiraPercentual.map((c,i)=>(
+
+            <p key={i}>
+
+              {c.name} —
+
+              R$ {c.value.toFixed(2)}
+
+              ({c.percentual}%)
+
+            </p>
+
+          ))}
+
+        </div>
+
       </Section>
 
-      {/* FORM TRANSAÇÃO */}
+      {/* NOVO LANÇAMENTO */}
       <Section title="Novo Lançamento">
-        <select onChange={e=>setForm({...form, tipo:e.target.value})}>
-          <option>Receita</option>
-          <option>Despesa</option>
-        </select>
 
-        <select onChange={e=>setForm({...form, pessoa:e.target.value})}>
-          <option>Ricardo</option>
-          <option>Larissa</option>
-        </select>
+        <div
+          style={{
+            display:"grid",
+            gap:10
+          }}
+        >
 
-        <select onChange={e=>setForm({...form, origem:e.target.value})}>
-          <option>PJ</option>
-          <option>PF</option>
-          <option>Lucros</option>
-        </select>
+          <select
+            onChange={e=>
+              setForm({
+                ...form,
+                tipo:e.target.value
+              })
+            }
+          >
 
-        <select onChange={e=>setForm({...form, categoria:e.target.value})}>
-          <option>Consultas</option>
-          <option>Moradia</option>
-          <option>Alimentação</option>
-          <option>Transporte</option>
-          <option>Lazer</option>
-          <option>Saúde</option>
-          <option>Educação</option>
-          <option>Impostos</option>
-        </select>
+            <option>Receita</option>
+            <option>Despesa</option>
 
-        <input placeholder="Descrição" onChange={e=>setForm({...form, descricao:e.target.value})}/>
-        <input type="number" placeholder="Valor" onChange={e=>setForm({...form, valor:e.target.value})}/>
-        <button onClick={salvar}>Salvar</button>
+          </select>
+
+          <select
+            onChange={e=>
+              setForm({
+                ...form,
+                pessoa:e.target.value
+              })
+            }
+          >
+
+            <option>Ricardo</option>
+            <option>Larissa</option>
+
+          </select>
+
+          <select
+            onChange={e=>
+              setForm({
+                ...form,
+                origem:e.target.value
+              })
+            }
+          >
+
+            <option>PJ</option>
+            <option>PF</option>
+            <option>Lucros</option>
+
+          </select>
+
+          <select
+            onChange={e=>
+              setForm({
+                ...form,
+                tributavel:e.target.value === "true"
+              })
+            }
+          >
+
+            <option value="true">
+              Tributável
+            </option>
+
+            <option value="false">
+              Isento
+            </option>
+
+          </select>
+
+          <select
+            onChange={e=>
+              setForm({
+                ...form,
+                categoria:e.target.value
+              })
+            }
+          >
+
+            <option>Consultas</option>
+            <option>Moradia</option>
+            <option>Alimentação</option>
+            <option>Transporte</option>
+            <option>Lazer</option>
+            <option>Saúde</option>
+            <option>Educação</option>
+            <option>Impostos</option>
+
+          </select>
+
+          <input
+            placeholder="Descrição"
+            onChange={e=>
+              setForm({
+                ...form,
+                descricao:e.target.value
+              })
+            }
+          />
+
+          <input
+            type="number"
+            placeholder="Valor"
+            onChange={e=>
+              setForm({
+                ...form,
+                valor:e.target.value
+              })
+            }
+          />
+
+          <button onClick={salvar}>
+            Salvar
+          </button>
+
+        </div>
+
       </Section>
 
       {/* INVESTIMENTOS */}
       <Section title="Investimentos">
-        <input placeholder="Nome do ativo" onChange={e=>setFormInvest({...formInvest, nome:e.target.value})}/>
 
-        <select onChange={e=>setFormInvest({...formInvest, categoria:e.target.value})}>
-          <option>Renda Fixa</option>
-          <option>Ações</option>
-          <option>FIIs</option>
-          <option>ETFs</option>
-          <option>Internacional</option>
-          <option>Cripto</option>
-        </select>
+        <div
+          style={{
+            display:"grid",
+            gap:10
+          }}
+        >
 
-        <select onChange={e=>setFormInvest({...formInvest, tipo_movimento:e.target.value})}>
-          <option>Aporte</option>
-          <option>Resgate</option>
-        </select>
+          <input
+            placeholder="Nome do ativo"
+            onChange={e=>
+              setFormInvest({
+                ...formInvest,
+                nome:e.target.value
+              })
+            }
+          />
 
-        <input type="number" placeholder="Valor" onChange={e=>setFormInvest({...formInvest, valor:e.target.value})}/>
-        <button onClick={salvarInvest}>Salvar</button>
+          <select
+            onChange={e=>
+              setFormInvest({
+                ...formInvest,
+                categoria:e.target.value
+              })
+            }
+          >
 
-        <ul>
+            <option>Renda Fixa</option>
+            <option>Ações</option>
+            <option>FIIs</option>
+            <option>ETFs</option>
+            <option>Internacional</option>
+            <option>Cripto</option>
+
+          </select>
+
+          <select
+            onChange={e=>
+              setFormInvest({
+                ...formInvest,
+                tipo_movimento:e.target.value
+              })
+            }
+          >
+
+            <option>Aporte</option>
+            <option>Resgate</option>
+
+          </select>
+
+          <input
+            type="number"
+            placeholder="Valor"
+            onChange={e=>
+              setFormInvest({
+                ...formInvest,
+                valor:e.target.value
+              })
+            }
+          />
+
+          <button onClick={salvarInvest}>
+            Salvar Investimento
+          </button>
+
+        </div>
+
+        <div style={{ marginTop:20 }}>
+
           {invest.map(i=>(
-            <li key={i.id}>
-              {i.nome} | {i.categoria} | {i.tipo_movimento} | R$ {i.valor}
-            </li>
+
+            <div
+              key={i.id}
+              style={{
+                background:"#0f172a",
+                padding:10,
+                marginBottom:10,
+                borderRadius:8
+              }}
+            >
+
+              <strong>{i.nome}</strong>
+
+              <p>{i.categoria}</p>
+
+              <p>{i.tipo_movimento}</p>
+
+              <p>
+                R$ {Number(i.valor).toFixed(2)}
+              </p>
+
+            </div>
+
           ))}
-        </ul>
+
+        </div>
+
       </Section>
 
     </div>
   );
 }
 
+// =========================
+// CARD
+// =========================
+
 function Card({title,value}) {
+
   return (
-    <div style={{ background:"#1e293b", padding:15, borderRadius:10 }}>
+
+    <div
+      style={{
+        background:"#1e293b",
+        padding:20,
+        borderRadius:12,
+        boxShadow:"0 0 10px rgba(0,0,0,0.3)"
+      }}
+    >
+
       <p>{title}</p>
-      <h2>R$ {Number(value).toFixed(2)}</h2>
+
+      <h2>
+        R$ {Number(value).toFixed(2)}
+      </h2>
+
     </div>
   );
 }
 
+// =========================
+// SECTION
+// =========================
+
 function Section({title,children}) {
+
   return (
-    <div style={{ marginTop:20, background:"#1e293b", padding:20, borderRadius:10 }}>
-      <h3>{title}</h3>
+
+    <div
+      style={{
+        marginTop:25,
+        background:"#1e293b",
+        padding:20,
+        borderRadius:12,
+        boxShadow:"0 0 10px rgba(0,0,0,0.3)"
+      }}
+    >
+
+      <h3 style={{ marginBottom:20 }}>
+        {title}
+      </h3>
+
       {children}
+
     </div>
   );
 }
