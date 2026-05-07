@@ -7,20 +7,22 @@ import ReceitaForm from "./components/lancamentos/ReceitaForm";
 import DespesaForm from "./components/lancamentos/DespesaForm";
 import InvestimentoForm from "./components/investimentos/InvestimentoForm";
 
+import ExportarPDF from "./components/relatorios/ExportarPDF";
+
 import {
+  ResponsiveContainer,
   PieChart,
   Pie,
   Cell,
   Tooltip,
   Legend,
-  ResponsiveContainer,
-  LineChart,
-  Line,
+  BarChart,
+  Bar,
+  CartesianGrid,
   XAxis,
   YAxis,
-  CartesianGrid,
-  BarChart,
-  Bar
+  LineChart,
+  Line
 } from "recharts";
 
 export default function App() {
@@ -32,16 +34,11 @@ export default function App() {
   */
 
   const [dados, setDados] = useState([]);
-  const [invest, setInvest] = useState([]);
+  const [investimentosData, setInvestimentosData] =
+    useState([]);
 
   const [inicio, setInicio] = useState("");
   const [fim, setFim] = useState("");
-
-  /*
-  =====================================================
-  PROTEÇÃO ANTI DUPLO CLIQUE
-  =====================================================
-  */
 
   const [salvandoReceita, setSalvandoReceita] =
     useState(false);
@@ -91,8 +88,7 @@ export default function App() {
     "#06b6d4",
     "#14b8a6",
     "#eab308",
-    "#ec4899",
-    "#84cc16"
+    "#ec4899"
   ];
 
   /*
@@ -103,7 +99,7 @@ export default function App() {
 
   async function carregar() {
 
-    const { data, error } =
+    const { data } =
       await supabase
         .from("transactions")
         .select("*")
@@ -111,13 +107,9 @@ export default function App() {
           ascending:true
         });
 
-    if(error) {
-      console.log(error);
-    }
-
     setDados(data || []);
 
-    const { data: inv } =
+    const { data: investimentos } =
       await supabase
         .from("investimentos")
         .select("*")
@@ -125,70 +117,28 @@ export default function App() {
           ascending:true
         });
 
-    setInvest(inv || []);
+    setInvestimentosData(
+      investimentos || []
+    );
+
   }
 
   useEffect(()=>{
+
     carregar();
+
   },[]);
 
   /*
   =====================================================
-  FILTROS DE DATA
+  FILTRO DATA
   =====================================================
   */
 
-  const filtrados = useMemo(()=>{
-
-    return dados.filter(item=>{
-
-      const data =
-        new Date(item.data);
-
-      if(
-        inicio &&
-        data < new Date(inicio)
-      ) {
-        return false;
-      }
-
-      if(fim) {
-
-        const dataFim =
-          new Date(fim);
-
-        dataFim.setHours(
-          23,
-          59,
-          59,
-          999
-        );
-
-        if(data > dataFim) {
-          return false;
-        }
-      }
-
-      return true;
-
-    });
-
-  },[
-    dados,
-    inicio,
-    fim
-  ]);
-
-  /*
-  =====================================================
-  INVESTIMENTOS FILTRADOS
-  =====================================================
-  */
-
-  const investimentosFiltrados =
+  const filtrados =
     useMemo(()=>{
 
-      return invest.filter(item=>{
+      return dados.filter(item=>{
 
         const data =
           new Date(item.data);
@@ -215,6 +165,7 @@ export default function App() {
           if(data > dataFim) {
             return false;
           }
+
         }
 
         return true;
@@ -222,7 +173,56 @@ export default function App() {
       });
 
     },[
-      invest,
+      dados,
+      inicio,
+      fim
+    ]);
+
+  /*
+  =====================================================
+  FILTRO INVESTIMENTOS
+  =====================================================
+  */
+
+  const investimentosFiltrados =
+    useMemo(()=>{
+
+      return investimentosData.filter(item=>{
+
+        const data =
+          new Date(item.data);
+
+        if(
+          inicio &&
+          data < new Date(inicio)
+        ) {
+          return false;
+        }
+
+        if(fim) {
+
+          const dataFim =
+            new Date(fim);
+
+          dataFim.setHours(
+            23,
+            59,
+            59,
+            999
+          );
+
+          if(data > dataFim) {
+            return false;
+          }
+
+        }
+
+        return true;
+
+      });
+
+    },[
+      investimentosData,
       inicio,
       fim
     ]);
@@ -340,93 +340,7 @@ export default function App() {
 
   /*
   =====================================================
-  CONSOLIDAÇÃO
-  =====================================================
-  */
-
-  const receitasRicardo =
-    filtrados
-      .filter(item=>
-
-        item.pessoa === "Ricardo"
-
-        &&
-
-        String(item.tipo)
-          .toLowerCase()
-          .trim() === "receita"
-
-      )
-      .reduce(
-        (acc,item)=>
-          acc +
-          Number(item.valor || 0),
-        0
-      );
-
-  const despesasRicardo =
-    filtrados
-      .filter(item=>
-
-        item.pessoa === "Ricardo"
-
-        &&
-
-        String(item.tipo)
-          .toLowerCase()
-          .trim() === "despesa"
-
-      )
-      .reduce(
-        (acc,item)=>
-          acc +
-          Number(item.valor || 0),
-        0
-      );
-
-  const receitasLarissa =
-    filtrados
-      .filter(item=>
-
-        item.pessoa === "Larissa"
-
-        &&
-
-        String(item.tipo)
-          .toLowerCase()
-          .trim() === "receita"
-
-      )
-      .reduce(
-        (acc,item)=>
-          acc +
-          Number(item.valor || 0),
-        0
-      );
-
-  const despesasLarissa =
-    filtrados
-      .filter(item=>
-
-        item.pessoa === "Larissa"
-
-        &&
-
-        String(item.tipo)
-          .toLowerCase()
-          .trim() === "despesa"
-
-      )
-      .reduce(
-        (acc,item)=>
-          acc +
-          Number(item.valor || 0),
-        0
-      );
-
-  /*
-  =====================================================
-  RELATÓRIO SEMANAL
+  RELATÓRIOS
   =====================================================
   */
 
@@ -452,22 +366,15 @@ export default function App() {
           );
 
         return (
-
           dias <= 7
-
           &&
-
-          String(item.tipo)
-            .toLowerCase()
-            .trim() === "receita"
-
+          item.tipo === "Receita"
         );
 
       })
       .reduce(
-        (acc,item)=>
-          acc +
-          Number(item.valor || 0),
+        (a,b)=>
+          a + Number(b.valor || 0),
         0
       );
 
@@ -493,30 +400,17 @@ export default function App() {
           );
 
         return (
-
           dias <= 7
-
           &&
-
-          String(item.tipo)
-            .toLowerCase()
-            .trim() === "despesa"
-
+          item.tipo === "Despesa"
         );
 
       })
       .reduce(
-        (acc,item)=>
-          acc +
-          Number(item.valor || 0),
+        (a,b)=>
+          a + Number(b.valor || 0),
         0
       );
-
-  /*
-  =====================================================
-  RELATÓRIO MENSAL
-  =====================================================
-  */
 
   const receitasMes =
     filtrados
@@ -540,17 +434,14 @@ export default function App() {
 
           &&
 
-          String(item.tipo)
-            .toLowerCase()
-            .trim() === "receita"
+          item.tipo === "Receita"
 
         );
 
       })
       .reduce(
-        (acc,item)=>
-          acc +
-          Number(item.valor || 0),
+        (a,b)=>
+          a + Number(b.valor || 0),
         0
       );
 
@@ -576,17 +467,14 @@ export default function App() {
 
           &&
 
-          String(item.tipo)
-            .toLowerCase()
-            .trim() === "despesa"
+          item.tipo === "Despesa"
 
         );
 
       })
       .reduce(
-        (acc,item)=>
-          acc +
-          Number(item.valor || 0),
+        (a,b)=>
+          a + Number(b.valor || 0),
         0
       );
 
@@ -597,12 +485,6 @@ export default function App() {
   */
 
   async function salvarReceita() {
-
-    /*
-    =========================================
-    ANTI DUPLO CLIQUE
-    =========================================
-    */
 
     if(salvandoReceita) {
       return;
@@ -616,51 +498,36 @@ export default function App() {
         Number(form.valor);
 
       /*
-      =======================================
-      SALVA RECEITA
-      =======================================
+      RECEITA
       */
 
-      const { error } =
-        await supabase
-          .from("transactions")
-          .insert([{
+      await supabase
+        .from("transactions")
+        .insert([{
 
-            tipo:"Receita",
+          tipo:"Receita",
 
-            pessoa:form.pessoa,
+          pessoa:form.pessoa,
 
-            origem:form.origem,
+          origem:form.origem,
 
-            categoria:form.categoria,
+          categoria:form.categoria,
 
-            descricao:form.descricao,
+          descricao:form.descricao,
 
-            valor:valor,
+          valor:valor,
 
-            tributavel:
-              form.tributavel,
+          tributavel:
+            form.tributavel,
 
-            data:
-              new Date()
-                .toISOString()
+          data:
+            new Date()
+              .toISOString()
 
-          }]);
-
-      if(error) {
-
-        alert(
-          "Erro ao salvar receita: " +
-          error.message
-        );
-
-        return;
-      }
+        }]);
 
       /*
-      =======================================
-      CÁLCULO DE IMPOSTO
-      =======================================
+      IMPOSTO
       */
 
       let imposto = 0;
@@ -678,7 +545,7 @@ export default function App() {
       }
 
       /*
-      LUCROS ISENTOS
+      LUCROS
       */
 
       else if(
@@ -702,6 +569,10 @@ export default function App() {
 
       ) {
 
+        /*
+        ISENÇÃO
+        */
+
         if(valor <= 5000) {
 
           imposto = 0;
@@ -709,50 +580,37 @@ export default function App() {
 
         else {
 
-          let aliquota = 0;
-          let deducao = 0;
+          /*
+          FAIXAS
+          */
 
           if(valor <= 2826.65) {
 
-            aliquota = 0.075;
-            deducao = 182.16;
+            imposto =
+              valor * 0.075 - 182.16;
 
           }
 
-          else if(
-            valor <= 3751.05
-          ) {
+          else if(valor <= 3751.05) {
 
-            aliquota = 0.15;
-            deducao = 394.16;
+            imposto =
+              valor * 0.15 - 394.16;
 
           }
 
-          else if(
-            valor <= 4664.68
-          ) {
+          else if(valor <= 4664.68) {
 
-            aliquota = 0.225;
-            deducao = 675.49;
+            imposto =
+              valor * 0.225 - 675.49;
 
           }
 
           else {
 
-            aliquota = 0.275;
-            deducao = 908.73;
+            imposto =
+              valor * 0.275 - 908.73;
 
           }
-
-          imposto =
-
-            (
-              valor *
-              aliquota
-            )
-
-            -
-            deducao;
 
           /*
           REDUTOR
@@ -760,19 +618,15 @@ export default function App() {
 
           if(valor <= 7350) {
 
-            const redutor =
+            imposto -=
 
               978.62
-
               -
               (
                 0.133145 *
                 valor
               );
 
-            imposto =
-              imposto -
-              redutor;
           }
 
           if(imposto < 0) {
@@ -789,9 +643,7 @@ export default function App() {
         );
 
       /*
-      =======================================
-      EVITA DUPLICAÇÃO DE IMPOSTO
-      =======================================
+      EVITA DUPLICAÇÃO
       */
 
       if(imposto > 0) {
@@ -804,14 +656,10 @@ export default function App() {
               "descricao",
               `IR automático sobre ${form.origem}`
             )
-            .eq(
-              "valor",
-              imposto
-            )
             .gte(
               "data",
               new Date(
-                Date.now() - 10000
+                Date.now() - 5000
               ).toISOString()
             );
 
@@ -846,12 +694,6 @@ export default function App() {
         }
 
       }
-
-      /*
-      =======================================
-      RESET
-      =======================================
-      */
 
       setForm({
 
@@ -889,41 +731,31 @@ export default function App() {
 
   async function salvarDespesa() {
 
-    const { error } =
-      await supabase
-        .from("transactions")
-        .insert([{
+    await supabase
+      .from("transactions")
+      .insert([{
 
-          tipo:"Despesa",
+        tipo:"Despesa",
 
-          pessoa:form.pessoa,
+        pessoa:form.pessoa,
 
-          origem:"Despesa",
+        origem:"Despesa",
 
-          categoria:form.categoria,
+        categoria:form.categoria,
 
-          descricao:form.descricao,
+        descricao:form.descricao,
 
-          valor:
-            Number(form.valor),
+        valor:
+          Number(form.valor),
 
-          data:
-            new Date()
-              .toISOString()
+        data:
+          new Date()
+            .toISOString()
 
-        }]);
-
-    if(error) {
-
-      alert(
-        "Erro ao salvar despesa: " +
-        error.message
-      );
-
-      return;
-    }
+      }]);
 
     carregar();
+
   }
 
   /*
@@ -934,45 +766,35 @@ export default function App() {
 
   async function salvarInvest() {
 
-    const { error } =
-      await supabase
-        .from("investimentos")
-        .insert([{
+    await supabase
+      .from("investimentos")
+      .insert([{
 
-          nome:
-            formInvest.nome,
+        nome:
+          formInvest.nome,
 
-          pessoa:
-            formInvest.pessoa,
+        pessoa:
+          formInvest.pessoa,
 
-          categoria:
-            formInvest.categoria,
+        categoria:
+          formInvest.categoria,
 
-          tipo_movimento:
-            formInvest.tipo_movimento,
+        tipo_movimento:
+          formInvest.tipo_movimento,
 
-          valor:
-            Number(
-              formInvest.valor
-            ),
+        valor:
+          Number(
+            formInvest.valor
+          ),
 
-          data:
-            new Date()
-              .toISOString()
+        data:
+          new Date()
+            .toISOString()
 
-        }]);
-
-    if(error) {
-
-      alert(
-        "Erro ao salvar investimento: " +
-        error.message
-      );
-
-      return;
-    }
+      }]);
 
     carregar();
+
   }
 
   /*
@@ -1001,9 +823,7 @@ export default function App() {
       filtrados
         .filter(item=>
 
-          String(item.tipo)
-            .toLowerCase()
-            .trim() === "despesa"
+          item.tipo === "Despesa"
 
         )
         .reduce((acc,item)=>{
@@ -1020,6 +840,7 @@ export default function App() {
               value:0
 
             };
+
           }
 
           acc[item.categoria]
@@ -1050,17 +871,15 @@ export default function App() {
 
       valor:
 
-        String(item.tipo)
-          .toLowerCase()
-          .trim() === "receita"
+        item.tipo === "Receita"
 
-          ?
+        ?
 
-          Number(item.valor)
+        Number(item.valor)
 
-          :
+        :
 
-          -Number(item.valor)
+        -Number(item.valor)
 
     })),
 
@@ -1071,17 +890,15 @@ export default function App() {
 
         valor:
 
-          String(item.tipo_movimento)
-            .toLowerCase()
-            .trim() === "aporte"
+          item.tipo_movimento === "Aporte"
 
-            ?
+          ?
 
-            Number(item.valor)
+          Number(item.valor)
 
-            :
+          :
 
-            -Number(item.valor)
+          -Number(item.valor)
 
       }))
 
@@ -1125,17 +942,15 @@ export default function App() {
 
           const valor =
 
-            String(item.tipo_movimento)
-              .toLowerCase()
-              .trim() === "aporte"
+            item.tipo_movimento === "Aporte"
 
-              ?
+            ?
 
-              Number(item.valor)
+            Number(item.valor)
 
-              :
+            :
 
-              -Number(item.valor);
+            -Number(item.valor);
 
           if(
             !acc[item.categoria]
@@ -1148,6 +963,7 @@ export default function App() {
               value:0
 
             };
+
           }
 
           acc[item.categoria]
@@ -1159,14 +975,6 @@ export default function App() {
 
     )
     .filter(item=>item.value > 0);
-
-  const totalCarteira =
-
-    carteira.reduce(
-      (acc,item)=>
-        acc + item.value,
-      0
-    );
 
   return (
 
@@ -1207,11 +1015,6 @@ export default function App() {
               e.target.value
             )
           }
-          style={{
-            padding:10,
-            borderRadius:10,
-            border:"none"
-          }}
         />
 
         <input
@@ -1222,11 +1025,6 @@ export default function App() {
               e.target.value
             )
           }
-          style={{
-            padding:10,
-            borderRadius:10,
-            border:"none"
-          }}
         />
 
       </div>
@@ -1273,6 +1071,407 @@ export default function App() {
 
       </div>
 
+      <div
+        id="relatorio-pdf"
+        style={{
+          marginTop:40
+        }}
+      >
+
+        <div
+          style={{
+            display:"grid",
+            gridTemplateColumns:
+              "repeat(auto-fit,minmax(450px,1fr))",
+            gap:30
+          }}
+        >
+
+          <div
+            style={{
+              background:"#1e293b",
+              padding:20,
+              borderRadius:20
+            }}
+          >
+
+            <h2>
+              Receitas x Despesas
+            </h2>
+
+            <ResponsiveContainer
+              width="100%"
+              height={350}
+            >
+
+              <PieChart>
+
+                <Pie
+                  data={
+                    graficoReceitaDespesa
+                  }
+                  dataKey="value"
+                  nameKey="name"
+                  outerRadius={120}
+                  label
+                >
+
+                  {
+                    graficoReceitaDespesa
+                      .map((_,i)=>(
+
+                      <Cell
+                        key={i}
+                        fill={
+                          COLORS[
+                            i %
+                            COLORS.length
+                          ]
+                        }
+                      />
+
+                    ))
+                  }
+
+                </Pie>
+
+                <Tooltip/>
+                <Legend/>
+
+              </PieChart>
+
+            </ResponsiveContainer>
+
+          </div>
+
+          <div
+            style={{
+              background:"#1e293b",
+              padding:20,
+              borderRadius:20
+            }}
+          >
+
+            <h2>
+              Despesas por Categoria
+            </h2>
+
+            <ResponsiveContainer
+              width="100%"
+              height={350}
+            >
+
+              <BarChart
+                data={
+                  despesasCategoria
+                }
+              >
+
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                />
+
+                <XAxis dataKey="name"/>
+
+                <YAxis/>
+
+                <Tooltip/>
+
+                <Legend/>
+
+                <Bar
+                  dataKey="value"
+                  fill="#ef4444"
+                />
+
+              </BarChart>
+
+            </ResponsiveContainer>
+
+          </div>
+
+          <div
+            style={{
+              background:"#1e293b",
+              padding:20,
+              borderRadius:20
+            }}
+          >
+
+            <h2>
+              Evolução Patrimonial
+            </h2>
+
+            <ResponsiveContainer
+              width="100%"
+              height={350}
+            >
+
+              <LineChart
+                data={
+                  patrimonioEvolucao
+                }
+              >
+
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                />
+
+                <XAxis dataKey="data"/>
+
+                <YAxis/>
+
+                <Tooltip/>
+
+                <Legend/>
+
+                <Line
+                  type="monotone"
+                  dataKey="patrimonio"
+                  stroke="#22c55e"
+                  strokeWidth={3}
+                />
+
+              </LineChart>
+
+            </ResponsiveContainer>
+
+          </div>
+
+          <div
+            style={{
+              background:"#1e293b",
+              padding:20,
+              borderRadius:20
+            }}
+          >
+
+            <h2>
+              Carteira XP
+            </h2>
+
+            <ResponsiveContainer
+              width="100%"
+              height={350}
+            >
+
+              <PieChart>
+
+                <Pie
+                  data={carteira}
+                  dataKey="value"
+                  nameKey="name"
+                  outerRadius={120}
+                  label
+                >
+
+                  {
+                    carteira.map((_,i)=>(
+
+                      <Cell
+                        key={i}
+                        fill={
+                          COLORS[
+                            i %
+                            COLORS.length
+                          ]
+                        }
+                      />
+
+                    ))
+                  }
+
+                </Pie>
+
+                <Tooltip/>
+                <Legend/>
+
+              </PieChart>
+
+            </ResponsiveContainer>
+
+          </div>
+
+        </div>
+
+        <div
+          style={{
+            marginTop:40,
+            background:"#1e293b",
+            padding:25,
+            borderRadius:20
+          }}
+        >
+
+          <h2>
+            Relatórios
+          </h2>
+
+          <div
+            style={{
+              display:"grid",
+              gridTemplateColumns:
+                "repeat(auto-fit,minmax(300px,1fr))",
+              gap:20
+            }}
+          >
+
+            <div
+              style={{
+                background:"#0f172a",
+                padding:20,
+                borderRadius:16
+              }}
+            >
+
+              <h3>
+                Relatório Semanal
+              </h3>
+
+              <p>
+                Receitas:
+                {" "}
+                R$
+                {" "}
+                {
+                  receitasSemana
+                    .toFixed(2)
+                }
+              </p>
+
+              <p>
+                Despesas:
+                {" "}
+                R$
+                {" "}
+                {
+                  despesasSemana
+                    .toFixed(2)
+                }
+              </p>
+
+            </div>
+
+            <div
+              style={{
+                background:"#0f172a",
+                padding:20,
+                borderRadius:16
+              }}
+            >
+
+              <h3>
+                Relatório Mensal
+              </h3>
+
+              <p>
+                Receitas:
+                {" "}
+                R$
+                {" "}
+                {
+                  receitasMes
+                    .toFixed(2)
+                }
+              </p>
+
+              <p>
+                Despesas:
+                {" "}
+                R$
+                {" "}
+                {
+                  despesasMes
+                    .toFixed(2)
+                }
+              </p>
+
+            </div>
+
+            <div
+              style={{
+                background:"#0f172a",
+                padding:20,
+                borderRadius:16
+              }}
+            >
+
+              <h3>
+                Consolidado
+              </h3>
+
+              <p>
+                Patrimônio:
+                {" "}
+                R$
+                {" "}
+                {
+                  patrimonio
+                    .toFixed(2)
+                }
+              </p>
+
+              <p>
+                Investimentos:
+                {" "}
+                R$
+                {" "}
+                {
+                  investimentos
+                    .toFixed(2)
+                }
+              </p>
+
+              <p>
+                Impostos:
+                {" "}
+                R$
+                {" "}
+                {
+                  impostos
+                    .toFixed(2)
+                }
+              </p>
+
+            </div>
+
+          </div>
+
+          <button
+
+            onClick={ExportarPDF}
+
+            style={{
+
+              marginTop:30,
+
+              background:"#22c55e",
+
+              color:"#ffffff",
+
+              border:"none",
+
+              padding:15,
+
+              borderRadius:12,
+
+              fontWeight:"bold",
+
+              cursor:"pointer"
+
+            }}
+          >
+
+            Exportar Relatório PDF
+
+          </button>
+
+        </div>
+
+      </div>
+
     </div>
+
   );
+
 }
