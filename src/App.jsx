@@ -73,9 +73,9 @@ export default function App() {
   ];
 
   /*
-    =========================
+    ==========================================
     CARREGAR DADOS
-    =========================
+    ==========================================
   */
 
   async function carregar() {
@@ -84,7 +84,9 @@ export default function App() {
       await supabase
         .from("transactions")
         .select("*")
-        .order("data", { ascending:true });
+        .order("data", {
+          ascending:true
+        });
 
     if(error) {
       console.log(error);
@@ -96,7 +98,9 @@ export default function App() {
       await supabase
         .from("investimentos")
         .select("*")
-        .order("data", { ascending:true });
+        .order("data", {
+          ascending:true
+        });
 
     setInvest(inv || []);
   }
@@ -106,24 +110,29 @@ export default function App() {
   },[]);
 
   /*
-    =========================
-    FILTROS DE DATA
-    =========================
+    ==========================================
+    FILTRO DE DATA
+    ==========================================
   */
 
   const filtrados = useMemo(()=>{
 
     return dados.filter(d=>{
 
-      const data = new Date(d.data);
+      const data =
+        new Date(d.data);
 
-      if(inicio && data < new Date(inicio)) {
+      if(
+        inicio &&
+        data < new Date(inicio)
+      ) {
         return false;
       }
 
       if(fim) {
 
-        const dataFim = new Date(fim);
+        const dataFim =
+          new Date(fim);
 
         dataFim.setHours(
           23,
@@ -148,7 +157,8 @@ export default function App() {
 
       return invest.filter(i=>{
 
-        const data = new Date(i.data);
+        const data =
+          new Date(i.data);
 
         if(
           inicio &&
@@ -181,18 +191,18 @@ export default function App() {
     },[invest,inicio,fim]);
 
   /*
-    =========================
+    ==========================================
     RECEITAS
-    =========================
+    ==========================================
   */
 
   const receitas = filtrados
-    .filter(
-      d=>
+    .filter(d=>
 
-        String(d.tipo)
-          .toLowerCase()
-          .trim() === "receita"
+      String(d.tipo)
+        .toLowerCase()
+        .trim() === "receita"
+
     )
     .reduce(
       (a,b)=>
@@ -201,18 +211,25 @@ export default function App() {
     );
 
   /*
-    =========================
+    ==========================================
     DESPESAS
-    =========================
+    EXCLUI INVESTIMENTOS
+    ==========================================
   */
 
   const despesas = filtrados
-    .filter(
-      d=>
+    .filter(d=>
 
-        String(d.tipo)
-          .toLowerCase()
-          .trim() === "despesa"
+      String(d.tipo)
+        .toLowerCase()
+        .trim() === "despesa"
+
+      &&
+
+      String(d.categoria)
+        .toLowerCase()
+        .trim() !== "investimento"
+
     )
     .reduce(
       (a,b)=>
@@ -221,24 +238,24 @@ export default function App() {
     );
 
   /*
-    =========================
+    ==========================================
     IMPOSTOS
-    =========================
+    ==========================================
   */
 
   const impostos = filtrados
-    .filter(
-      d=>
+    .filter(d=>
 
-        String(d.tipo)
-          .toLowerCase()
-          .trim() === "despesa"
+      String(d.tipo)
+        .toLowerCase()
+        .trim() === "despesa"
 
-        &&
+      &&
 
-        String(d.categoria)
-          .toLowerCase()
-          .trim() === "impostos"
+      String(d.categoria)
+        .toLowerCase()
+        .trim() === "impostos"
+
     )
     .reduce(
       (a,b)=>
@@ -247,9 +264,9 @@ export default function App() {
     );
 
   /*
-    =========================
+    ==========================================
     INVESTIMENTOS
-    =========================
+    ==========================================
   */
 
   const investimentos =
@@ -278,9 +295,9 @@ export default function App() {
       },0);
 
   /*
-    =========================
+    ==========================================
     PATRIMÔNIO
-    =========================
+    ==========================================
   */
 
   const patrimonio =
@@ -292,253 +309,9 @@ export default function App() {
     investimentos;
 
   /*
-    =========================
-    CONSOLIDAÇÃO
-    =========================
-  */
-
-  const receitasRicardo =
-    filtrados
-      .filter(
-        d=>
-
-          String(d.tipo)
-            .toLowerCase()
-            .trim() === "receita"
-
-          &&
-
-          d.pessoa === "Ricardo"
-      )
-      .reduce(
-        (a,b)=>
-          a + Number(b.valor || 0),
-        0
-      );
-
-  const despesasRicardo =
-    filtrados
-      .filter(
-        d=>
-
-          String(d.tipo)
-            .toLowerCase()
-            .trim() === "despesa"
-
-          &&
-
-          d.pessoa === "Ricardo"
-      )
-      .reduce(
-        (a,b)=>
-          a + Number(b.valor || 0),
-        0
-      );
-
-  const receitasLarissa =
-    filtrados
-      .filter(
-        d=>
-
-          String(d.tipo)
-            .toLowerCase()
-            .trim() === "receita"
-
-          &&
-
-          d.pessoa === "Larissa"
-      )
-      .reduce(
-        (a,b)=>
-          a + Number(b.valor || 0),
-        0
-      );
-
-  const despesasLarissa =
-    filtrados
-      .filter(
-        d=>
-
-          String(d.tipo)
-            .toLowerCase()
-            .trim() === "despesa"
-
-          &&
-
-          d.pessoa === "Larissa"
-      )
-      .reduce(
-        (a,b)=>
-          a + Number(b.valor || 0),
-        0
-      );
-
-  /*
-    =========================
-    RELATÓRIO SEMANAL
-    =========================
-  */
-
-  const receitasSemana =
-    filtrados
-      .filter(d=>{
-
-        const data =
-          new Date(d.data);
-
-        const hoje =
-          new Date();
-
-        const dias =
-          (
-            hoje - data
-          ) /
-          (
-            1000 *
-            60 *
-            60 *
-            24
-          );
-
-        return (
-
-          String(d.tipo)
-            .toLowerCase()
-            .trim() === "receita"
-
-          &&
-
-          dias <= 7
-
-        );
-
-      })
-      .reduce(
-        (a,b)=>
-          a + Number(b.valor || 0),
-        0
-      );
-
-  const despesasSemana =
-    filtrados
-      .filter(d=>{
-
-        const data =
-          new Date(d.data);
-
-        const hoje =
-          new Date();
-
-        const dias =
-          (
-            hoje - data
-          ) /
-          (
-            1000 *
-            60 *
-            60 *
-            24
-          );
-
-        return (
-
-          String(d.tipo)
-            .toLowerCase()
-            .trim() === "despesa"
-
-          &&
-
-          dias <= 7
-
-        );
-
-      })
-      .reduce(
-        (a,b)=>
-          a + Number(b.valor || 0),
-        0
-      );
-
-  /*
-    =========================
-    RELATÓRIO MENSAL
-    =========================
-  */
-
-  const receitasMes =
-    filtrados
-      .filter(d=>{
-
-        const data =
-          new Date(d.data);
-
-        const hoje =
-          new Date();
-
-        return (
-
-          String(d.tipo)
-            .toLowerCase()
-            .trim() === "receita"
-
-          &&
-
-          data.getMonth()
-            === hoje.getMonth()
-
-          &&
-
-          data.getFullYear()
-            === hoje.getFullYear()
-
-        );
-
-      })
-      .reduce(
-        (a,b)=>
-          a + Number(b.valor || 0),
-        0
-      );
-
-  const despesasMes =
-    filtrados
-      .filter(d=>{
-
-        const data =
-          new Date(d.data);
-
-        const hoje =
-          new Date();
-
-        return (
-
-          String(d.tipo)
-            .toLowerCase()
-            .trim() === "despesa"
-
-          &&
-
-          data.getMonth()
-            === hoje.getMonth()
-
-          &&
-
-          data.getFullYear()
-            === hoje.getFullYear()
-
-        );
-
-      })
-      .reduce(
-        (a,b)=>
-          a + Number(b.valor || 0),
-        0
-      );
-
-  /*
-    =========================
+    ==========================================
     SALVAR RECEITA
-    =========================
+    ==========================================
   */
 
   async function salvarReceita() {
@@ -587,9 +360,9 @@ export default function App() {
     }
 
     /*
-      =====================
-      CÁLCULO IMPOSTO
-      =====================
+      ====================================
+      CÁLCULO DE IMPOSTO
+      ====================================
     */
 
     let imposto = 0;
@@ -618,8 +391,7 @@ export default function App() {
     }
 
     /*
-      PF TRIBUTÁVEL
-      NOVA REGRA 2026
+      PF
     */
 
     else if(
@@ -643,12 +415,12 @@ export default function App() {
 
       else {
 
+        /*
+          REGRA 2026
+        */
+
         let aliquota = 0;
         let deducao = 0;
-
-        /*
-          TABELA
-        */
 
         if(valor <= 2826.65) {
 
@@ -695,7 +467,6 @@ export default function App() {
 
         /*
           REDUTOR
-          5K -> 7.35K
         */
 
         if(valor <= 7350) {
@@ -730,7 +501,12 @@ export default function App() {
       );
 
     /*
-      SALVAR IMPOSTO
+      ====================================
+      SALVAR SOMENTE IMPOSTO
+      ====================================
+
+      NÃO CRIA DESPESA DUPLICADA
+
     */
 
     if(imposto > 0) {
@@ -783,9 +559,9 @@ export default function App() {
   }
 
   /*
-    =========================
+    ==========================================
     SALVAR DESPESA
-    =========================
+    ==========================================
   */
 
   async function salvarDespesa() {
@@ -828,9 +604,9 @@ export default function App() {
   }
 
   /*
-    =========================
+    ==========================================
     SALVAR INVESTIMENTO
-    =========================
+    ==========================================
   */
 
   async function salvarInvest() {
@@ -877,9 +653,9 @@ export default function App() {
   }
 
   /*
-    =========================
+    ==========================================
     GRÁFICOS
-    =========================
+    ==========================================
   */
 
   const graficoReceitaDespesa = [
@@ -900,12 +676,12 @@ export default function App() {
     Object.values(
 
       filtrados
-        .filter(
-          d=>
+        .filter(d=>
 
-            String(d.tipo)
-              .toLowerCase()
-              .trim() === "despesa"
+          String(d.tipo)
+            .toLowerCase()
+            .trim() === "despesa"
+
         )
         .reduce((acc,item)=>{
 
@@ -933,9 +709,9 @@ export default function App() {
     );
 
   /*
-    =========================
+    ==========================================
     EVOLUÇÃO PATRIMONIAL
-    =========================
+    ==========================================
   */
 
   const patrimonioEvolucao = [];
@@ -1013,9 +789,9 @@ export default function App() {
   });
 
   /*
-    =========================
+    ==========================================
     CARTEIRA XP
-    =========================
+    ==========================================
   */
 
   const carteira =
@@ -1075,8 +851,7 @@ export default function App() {
         background:"#0f172a",
         minHeight:"100vh",
         color:"#ffffff",
-        padding:20,
-        fontFamily:"Arial"
+        padding:20
       }}
     >
 
@@ -1090,620 +865,12 @@ export default function App() {
         Family Office Enterprise
       </h1>
 
-      <div
-        style={{
-          display:"flex",
-          gap:10,
-          marginBottom:30,
-          flexWrap:"wrap"
-        }}
-      >
-
-        <input
-          type="date"
-          value={inicio}
-          onChange={
-            e=>
-              setInicio(
-                e.target.value
-              )
-          }
-          style={{
-            padding:10,
-            borderRadius:8
-          }}
-        />
-
-        <input
-          type="date"
-          value={fim}
-          onChange={
-            e=>
-              setFim(
-                e.target.value
-              )
-          }
-          style={{
-            padding:10,
-            borderRadius:8
-          }}
-        />
-
-      </div>
-
       <DashboardCards
-
         receitas={receitas}
-
         despesas={despesas}
-
         investimentos={investimentos}
-
         patrimonio={patrimonio}
-
       />
-
-      <div
-        style={{
-          display:"grid",
-          gridTemplateColumns:
-            "repeat(auto-fit,minmax(350px,1fr))",
-          gap:20,
-          marginTop:30
-        }}
-      >
-
-        <ReceitaForm
-          form={form}
-          setForm={setForm}
-          salvar={salvarReceita}
-        />
-
-        <DespesaForm
-          form={form}
-          setForm={setForm}
-          salvar={salvarDespesa}
-        />
-
-        <InvestimentoForm
-          formInvest={formInvest}
-          setFormInvest={setFormInvest}
-          salvarInvest={salvarInvest}
-        />
-
-      </div>
-
-      <div
-        style={{
-          marginTop:40,
-          display:"grid",
-          gridTemplateColumns:
-            "repeat(auto-fit,minmax(450px,1fr))",
-          gap:30
-        }}
-      >
-
-        <div
-          style={{
-            background:"#1e293b",
-            borderRadius:20,
-            padding:20
-          }}
-        >
-
-          <h2 style={{ color:"#fff" }}>
-            Receitas x Despesas
-          </h2>
-
-          <ResponsiveContainer
-            width="100%"
-            height={350}
-          >
-
-            <PieChart>
-
-              <Pie
-                data={
-                  graficoReceitaDespesa
-                }
-                dataKey="value"
-                nameKey="name"
-                outerRadius={120}
-                label
-              >
-
-                {
-                  graficoReceitaDespesa
-                    .map((_,i)=>(
-
-                    <Cell
-                      key={i}
-                      fill={
-                        COLORS[
-                          i %
-                          COLORS.length
-                        ]
-                      }
-                    />
-
-                  ))
-                }
-
-              </Pie>
-
-              <Tooltip/>
-              <Legend/>
-
-            </PieChart>
-
-          </ResponsiveContainer>
-
-        </div>
-
-        <div
-          style={{
-            background:"#1e293b",
-            borderRadius:20,
-            padding:20
-          }}
-        >
-
-          <h2 style={{ color:"#fff" }}>
-            Despesas por Categoria
-          </h2>
-
-          <ResponsiveContainer
-            width="100%"
-            height={350}
-          >
-
-            <BarChart
-              data={despesasCategoria}
-            >
-
-              <CartesianGrid
-                strokeDasharray="3 3"
-              />
-
-              <XAxis dataKey="name"/>
-
-              <YAxis/>
-
-              <Tooltip/>
-
-              <Legend/>
-
-              <Bar
-                dataKey="value"
-                fill="#ef4444"
-              />
-
-            </BarChart>
-
-          </ResponsiveContainer>
-
-        </div>
-
-        <div
-          style={{
-            background:"#1e293b",
-            borderRadius:20,
-            padding:20
-          }}
-        >
-
-          <h2 style={{ color:"#fff" }}>
-            Evolução Patrimonial
-          </h2>
-
-          <ResponsiveContainer
-            width="100%"
-            height={350}
-          >
-
-            <LineChart
-              data={
-                patrimonioEvolucao
-              }
-            >
-
-              <CartesianGrid
-                strokeDasharray="3 3"
-              />
-
-              <XAxis dataKey="data"/>
-
-              <YAxis/>
-
-              <Tooltip/>
-
-              <Legend/>
-
-              <Line
-                type="monotone"
-                dataKey="patrimonio"
-                stroke="#22c55e"
-                strokeWidth={3}
-              />
-
-            </LineChart>
-
-          </ResponsiveContainer>
-
-        </div>
-
-        <div
-          style={{
-            background:"#1e293b",
-            borderRadius:20,
-            padding:20
-          }}
-        >
-
-          <h2 style={{ color:"#fff" }}>
-            Carteira XP
-          </h2>
-
-          <ResponsiveContainer
-            width="100%"
-            height={350}
-          >
-
-            <PieChart>
-
-              <Pie
-                data={carteira}
-                dataKey="value"
-                nameKey="name"
-                outerRadius={120}
-
-                label={({
-                  name,
-                  value
-                })=>{
-
-                  const percentual =
-
-                    totalCarteira > 0
-
-                    ?
-
-                    (
-                      (
-                        value /
-                        totalCarteira
-                      ) * 100
-                    ).toFixed(1)
-
-                    :
-
-                    0;
-
-                  return
-                    `${name} ${percentual}%`;
-                }}
-              >
-
-                {
-                  carteira.map((_,i)=>(
-
-                    <Cell
-                      key={i}
-                      fill={
-                        COLORS[
-                          i %
-                          COLORS.length
-                        ]
-                      }
-                    />
-
-                  ))
-                }
-
-              </Pie>
-
-              <Tooltip/>
-              <Legend/>
-
-            </PieChart>
-
-          </ResponsiveContainer>
-
-        </div>
-
-      </div>
-
-      <div
-        style={{
-          marginTop:40,
-          background:"#1e293b",
-          padding:25,
-          borderRadius:20
-        }}
-      >
-
-        <h2 style={{ color:"#fff" }}>
-          Relatórios Financeiros
-        </h2>
-
-        <div
-          style={{
-            display:"grid",
-            gridTemplateColumns:
-              "repeat(auto-fit,minmax(300px,1fr))",
-            gap:20,
-            marginTop:20
-          }}
-        >
-
-          <div
-            style={{
-              background:"#0f172a",
-              padding:20,
-              borderRadius:16
-            }}
-          >
-
-            <h3 style={{ color:"#22c55e" }}>
-              Relatório Semanal
-            </h3>
-
-            <p>
-              Receitas:
-              {" "}
-              R$
-              {" "}
-              {
-                receitasSemana
-                  .toFixed(2)
-              }
-            </p>
-
-            <p>
-              Despesas:
-              {" "}
-              R$
-              {" "}
-              {
-                despesasSemana
-                  .toFixed(2)
-              }
-            </p>
-
-            <p>
-              Saldo:
-              {" "}
-              R$
-              {" "}
-              {
-                (
-                  receitasSemana -
-                  despesasSemana
-                ).toFixed(2)
-              }
-            </p>
-
-          </div>
-
-          <div
-            style={{
-              background:"#0f172a",
-              padding:20,
-              borderRadius:16
-            }}
-          >
-
-            <h3 style={{ color:"#3b82f6" }}>
-              Relatório Mensal
-            </h3>
-
-            <p>
-              Receitas:
-              {" "}
-              R$
-              {" "}
-              {
-                receitasMes
-                  .toFixed(2)
-              }
-            </p>
-
-            <p>
-              Despesas:
-              {" "}
-              R$
-              {" "}
-              {
-                despesasMes
-                  .toFixed(2)
-              }
-            </p>
-
-            <p>
-              Saldo:
-              {" "}
-              R$
-              {" "}
-              {
-                (
-                  receitasMes -
-                  despesasMes
-                ).toFixed(2)
-              }
-            </p>
-
-          </div>
-
-          <div
-            style={{
-              background:"#0f172a",
-              padding:20,
-              borderRadius:16
-            }}
-          >
-
-            <h3 style={{ color:"#f59e0b" }}>
-              Ricardo
-            </h3>
-
-            <p>
-              Receitas:
-              {" "}
-              R$
-              {" "}
-              {
-                receitasRicardo
-                  .toFixed(2)
-              }
-            </p>
-
-            <p>
-              Despesas:
-              {" "}
-              R$
-              {" "}
-              {
-                despesasRicardo
-                  .toFixed(2)
-              }
-            </p>
-
-            <p>
-              Saldo:
-              {" "}
-              R$
-              {" "}
-              {
-                (
-                  receitasRicardo -
-                  despesasRicardo
-                ).toFixed(2)
-              }
-            </p>
-
-          </div>
-
-          <div
-            style={{
-              background:"#0f172a",
-              padding:20,
-              borderRadius:16
-            }}
-          >
-
-            <h3 style={{ color:"#8b5cf6" }}>
-              Larissa
-            </h3>
-
-            <p>
-              Receitas:
-              {" "}
-              R$
-              {" "}
-              {
-                receitasLarissa
-                  .toFixed(2)
-              }
-            </p>
-
-            <p>
-              Despesas:
-              {" "}
-              R$
-              {" "}
-              {
-                despesasLarissa
-                  .toFixed(2)
-              }
-            </p>
-
-            <p>
-              Saldo:
-              {" "}
-              R$
-              {" "}
-              {
-                (
-                  receitasLarissa -
-                  despesasLarissa
-                ).toFixed(2)
-              }
-            </p>
-
-          </div>
-
-          <div
-            style={{
-              background:"#0f172a",
-              padding:20,
-              borderRadius:16
-            }}
-          >
-
-            <h3 style={{ color:"#06b6d4" }}>
-              Consolidado Geral
-            </h3>
-
-            <p>
-              Receitas:
-              {" "}
-              R$
-              {" "}
-              {
-                receitas
-                  .toFixed(2)
-              }
-            </p>
-
-            <p>
-              Despesas:
-              {" "}
-              R$
-              {" "}
-              {
-                despesas
-                  .toFixed(2)
-              }
-            </p>
-
-            <p>
-              Impostos:
-              {" "}
-              R$
-              {" "}
-              {
-                impostos
-                  .toFixed(2)
-              }
-            </p>
-
-            <p>
-              Investimentos:
-              {" "}
-              R$
-              {" "}
-              {
-                investimentos
-                  .toFixed(2)
-              }
-            </p>
-
-            <p>
-              Patrimônio:
-              {" "}
-              R$
-              {" "}
-              {
-                patrimonio
-                  .toFixed(2)
-              }
-            </p>
-
-          </div>
-
-        </div>
-
-      </div>
 
     </div>
   );
