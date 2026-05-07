@@ -1,3 +1,5 @@
+// SUBSTITUA TODO O CONTEÚDO DO src/App.jsx POR ESTE CÓDIGO
+
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "./lib/supabase";
 
@@ -42,9 +44,6 @@ export default function App() {
 
   const [salvandoReceita, setSalvandoReceita] =
     useState(false);
-
-const [ultimaReceita, setUltimaReceita] =
-  useState(null);
 
   const [form, setForm] = useState({
 
@@ -298,6 +297,34 @@ const [ultimaReceita, setUltimaReceita] =
 
   /*
   =====================================================
+  DESPESAS SEM IMPOSTO
+  =====================================================
+  */
+
+  const despesasSemImposto =
+    filtrados
+      .filter(item=>
+
+        String(item.tipo)
+          .toLowerCase()
+          .trim() === "despesa"
+
+        &&
+
+        String(item.categoria)
+          .toLowerCase()
+          .trim() !== "impostos"
+
+      )
+      .reduce(
+        (acc,item)=>
+          acc +
+          Number(item.valor || 0),
+        0
+      );
+
+  /*
+  =====================================================
   INVESTIMENTOS
   =====================================================
   */
@@ -333,36 +360,15 @@ const [ultimaReceita, setUltimaReceita] =
   =====================================================
   */
 
-  const despesasSemImposto =
-  filtrados
-    .filter(item=>
+  const patrimonio =
 
-      String(item.tipo)
-        .toLowerCase()
-        .trim() === "despesa"
-
-      &&
-
-      String(item.categoria)
-        .toLowerCase()
-        .trim() !== "impostos"
-
-    )
-    .reduce(
-      (acc,item)=>
-        acc + Number(item.valor || 0),
-      0
-    );
-
-const patrimonio =
-
-  receitas
-  -
-  despesasSemImposto
-  -
-  impostos
-  +
-  investimentos;
+    receitas
+    -
+    despesasSemImposto
+    -
+    impostos
+    +
+    investimentos;
 
   /*
   =====================================================
@@ -510,30 +516,18 @@ const patrimonio =
   =====================================================
   */
 
- async function salvarReceita() {
+  async function salvarReceita() {
 
-  const agora = Date.now();
+    if(salvandoReceita) {
+      return;
+    }
 
-  if(
-    ultimaReceita
-    &&
-    agora - ultimaReceita < 3000
-  ) {
-    return;
-  }
+    setSalvandoReceita(true);
 
-  setUltimaReceita(agora);
+    try {
 
-  if(salvandoReceita) {
-    return;
-  }
-
-  setSalvandoReceita(true);
-
-  try {
-
-    const valor =
-      Number(form.valor);
+      const valor =
+        Number(form.valor);
 
       /*
       RECEITA
@@ -607,20 +601,12 @@ const patrimonio =
 
       ) {
 
-        /*
-        ISENÇÃO
-        */
-
         if(valor <= 5000) {
 
           imposto = 0;
         }
 
         else {
-
-          /*
-          FAIXAS
-          */
 
           if(valor <= 2826.65) {
 
@@ -650,10 +636,6 @@ const patrimonio =
 
           }
 
-          /*
-          REDUTOR
-          */
-
           if(valor <= 7350) {
 
             imposto -=
@@ -681,12 +663,12 @@ const patrimonio =
         );
 
       /*
-      EVITA DUPLICAÇÃO
+      APENAS UM INSERT DE IMPOSTO
       */
 
       if(imposto > 0) {
 
-        const { data: existentes } =
+        const { data: existente } =
           await supabase
             .from("transactions")
             .select("*")
@@ -694,16 +676,20 @@ const patrimonio =
               "descricao",
               `IR automático sobre ${form.origem}`
             )
+            .eq(
+              "valor",
+              imposto
+            )
             .gte(
               "data",
               new Date(
-                Date.now() - 5000
+                Date.now() - 10000
               ).toISOString()
             );
 
         if(
-          !existentes ||
-          existentes.length === 0
+          !existente ||
+          existente.length === 0
         ) {
 
           await supabase
@@ -750,6 +736,16 @@ const patrimonio =
       });
 
       carregar();
+
+    }
+
+    catch(error) {
+
+      console.log(error);
+
+      alert(
+        "Erro ao salvar receita"
+      );
 
     }
 
@@ -1182,154 +1178,6 @@ const patrimonio =
 
           </div>
 
-          <div
-            style={{
-              background:"#1e293b",
-              padding:20,
-              borderRadius:20
-            }}
-          >
-
-            <h2>
-              Despesas por Categoria
-            </h2>
-
-            <ResponsiveContainer
-              width="100%"
-              height={350}
-            >
-
-              <BarChart
-                data={
-                  despesasCategoria
-                }
-              >
-
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                />
-
-                <XAxis dataKey="name"/>
-
-                <YAxis/>
-
-                <Tooltip/>
-
-                <Legend/>
-
-                <Bar
-                  dataKey="value"
-                  fill="#ef4444"
-                />
-
-              </BarChart>
-
-            </ResponsiveContainer>
-
-          </div>
-
-          <div
-            style={{
-              background:"#1e293b",
-              padding:20,
-              borderRadius:20
-            }}
-          >
-
-            <h2>
-              Evolução Patrimonial
-            </h2>
-
-            <ResponsiveContainer
-              width="100%"
-              height={350}
-            >
-
-              <LineChart
-                data={
-                  patrimonioEvolucao
-                }
-              >
-
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                />
-
-                <XAxis dataKey="data"/>
-
-                <YAxis/>
-
-                <Tooltip/>
-
-                <Legend/>
-
-                <Line
-                  type="monotone"
-                  dataKey="patrimonio"
-                  stroke="#22c55e"
-                  strokeWidth={3}
-                />
-
-              </LineChart>
-
-            </ResponsiveContainer>
-
-          </div>
-
-          <div
-            style={{
-              background:"#1e293b",
-              padding:20,
-              borderRadius:20
-            }}
-          >
-
-            <h2>
-              Carteira XP
-            </h2>
-
-            <ResponsiveContainer
-              width="100%"
-              height={350}
-            >
-
-              <PieChart>
-
-                <Pie
-                  data={carteira}
-                  dataKey="value"
-                  nameKey="name"
-                  outerRadius={120}
-                  label
-                >
-
-                  {
-                    carteira.map((_,i)=>(
-
-                      <Cell
-                        key={i}
-                        fill={
-                          COLORS[
-                            i %
-                            COLORS.length
-                          ]
-                        }
-                      />
-
-                    ))
-                  }
-
-                </Pie>
-
-                <Tooltip/>
-                <Legend/>
-
-              </PieChart>
-
-            </ResponsiveContainer>
-
-          </div>
-
         </div>
 
         <div
@@ -1420,53 +1268,6 @@ const patrimonio =
                 {" "}
                 {
                   despesasMes
-                    .toFixed(2)
-                }
-              </p>
-
-            </div>
-
-            <div
-              style={{
-                background:"#0f172a",
-                padding:20,
-                borderRadius:16
-              }}
-            >
-
-              <h3>
-                Consolidado
-              </h3>
-
-              <p>
-                Patrimônio:
-                {" "}
-                R$
-                {" "}
-                {
-                  patrimonio
-                    .toFixed(2)
-                }
-              </p>
-
-              <p>
-                Investimentos:
-                {" "}
-                R$
-                {" "}
-                {
-                  investimentos
-                    .toFixed(2)
-                }
-              </p>
-
-              <p>
-                Impostos:
-                {" "}
-                R$
-                {" "}
-                {
-                  impostos
                     .toFixed(2)
                 }
               </p>
