@@ -12,7 +12,9 @@ import {
   YAxis,
   CartesianGrid,
   Legend,
-  ResponsiveContainer
+  ResponsiveContainer,
+  BarChart,
+  Bar
 } from "recharts";
 
 const COLORS = [
@@ -52,6 +54,7 @@ export default function App() {
 
   const [formInvest, setFormInvest] = useState({
     nome: "",
+    pessoa: "Ricardo",
     categoria: "Renda Fixa",
     tipo_movimento: "Aporte",
     valor: ""
@@ -86,20 +89,23 @@ export default function App() {
   // FILTRO
   // =========================
 
-  function filtrar() {
+  function dentroPeriodo(dataItem) {
 
-    return dados.filter(d => {
+    const data = new Date(dataItem);
 
-      const data = new Date(d.data);
+    if (inicio && new Date(inicio) > data) return false;
+    if (fim && new Date(fim) < data) return false;
 
-      if (inicio && new Date(inicio) > data) return false;
-      if (fim && new Date(fim) < data) return false;
-
-      return true;
-    });
+    return true;
   }
 
-  const filtrados = filtrar();
+  const filtrados = dados.filter(d =>
+    dentroPeriodo(d.data)
+  );
+
+  const investimentosFiltrados = invest.filter(i =>
+    dentroPeriodo(i.data)
+  );
 
   // =========================
   // RECEITAS / DESPESAS
@@ -119,7 +125,7 @@ export default function App() {
   // INVESTIMENTOS
   // =========================
 
-  const totalInvest = invest.reduce((acc,i)=>{
+  const totalInvest = investimentosFiltrados.reduce((acc,i)=>{
 
     if(i.tipo_movimento === "Aporte") {
       return acc + Number(i.valor);
@@ -140,16 +146,69 @@ export default function App() {
   const patrimonio = saldo + totalInvest;
 
   // =========================
-  // EVOLUÇÃO PATRIMONIAL
+  // RELATÓRIO POR PESSOA
+  // =========================
+
+  function resumoPessoa(nome) {
+
+    const receitas = filtrados
+      .filter(
+        d =>
+          d.tipo === "Receita" &&
+          d.pessoa === nome
+      )
+      .reduce((a,b)=>a+Number(b.valor||0),0);
+
+    const despesas = filtrados
+      .filter(
+        d =>
+          d.tipo === "Despesa" &&
+          d.pessoa === nome
+      )
+      .reduce((a,b)=>a+Number(b.valor||0),0);
+
+    const investimentos = investimentosFiltrados
+      .filter(i => i.pessoa === nome)
+      .reduce((acc,i)=>{
+
+        if(i.tipo_movimento === "Aporte") {
+          return acc + Number(i.valor);
+        }
+
+        if(i.tipo_movimento === "Resgate") {
+          return acc - Number(i.valor);
+        }
+
+        return acc;
+
+      },0);
+
+    return {
+      receitas,
+      despesas,
+      investimentos,
+      saldo: receitas - despesas,
+      patrimonio:
+        receitas -
+        despesas +
+        investimentos
+    };
+  }
+
+  const ricardo = resumoPessoa("Ricardo");
+  const larissa = resumoPessoa("Larissa");
+
+  // =========================
+  // EVOLUÇÃO
   // =========================
 
   let acumulado = 0;
 
   const evolucao = [];
 
-  const eventosFinanceiros = [
+  const eventos = [
 
-    ...dados.map(d => ({
+    ...filtrados.map(d => ({
       data: d.data,
       valor:
         d.tipo === "Receita"
@@ -157,7 +216,7 @@ export default function App() {
           : -Number(d.valor)
     })),
 
-    ...invest.map(i => ({
+    ...investimentosFiltrados.map(i => ({
       data: i.data,
       valor:
         i.tipo_movimento === "Aporte"
@@ -166,11 +225,11 @@ export default function App() {
     }))
   ];
 
-  eventosFinanceiros.sort(
+  eventos.sort(
     (a,b)=>new Date(a.data)-new Date(b.data)
   );
 
-  eventosFinanceiros.forEach(e => {
+  eventos.forEach(e=>{
 
     acumulado += e.valor;
 
@@ -186,7 +245,7 @@ export default function App() {
 
   const carteira = Object.values(
 
-    invest.reduce((acc,i)=>{
+    investimentosFiltrados.reduce((acc,i)=>{
 
       const valor =
         i.tipo_movimento === "Aporte"
@@ -220,7 +279,6 @@ export default function App() {
       totalCarteira > 0
         ? ((i.value / totalCarteira) * 100).toFixed(1)
         : 0
-
   }));
 
   // =========================
@@ -231,10 +289,6 @@ export default function App() {
     { name: "Receitas", value: totalReceita },
     { name: "Despesas", value: totalDespesa }
   ];
-
-  // =========================
-  // DESPESAS POR CATEGORIA
-  // =========================
 
   const despesasCategoria = Object.values(
 
@@ -258,6 +312,23 @@ export default function App() {
 
   );
 
+  const graficoPessoas = [
+
+    {
+      nome: "Ricardo",
+      receitas: ricardo.receitas,
+      despesas: ricardo.despesas,
+      investimentos: ricardo.investimentos
+    },
+
+    {
+      nome: "Larissa",
+      receitas: larissa.receitas,
+      despesas: larissa.despesas,
+      investimentos: larissa.investimentos
+    }
+  ];
+
   // =========================
   // RELATÓRIO
   // =========================
@@ -270,11 +341,11 @@ export default function App() {
 
       despesas: totalDespesa,
 
+      investimentos: totalInvest,
+
       saldo,
 
-      patrimonio,
-
-      investimentos: totalInvest
+      patrimonio
     });
   }
 
@@ -296,13 +367,10 @@ export default function App() {
 
     }]);
 
-    // =====================
-    // IMPOSTO AUTOMÁTICO
-    // =====================
-
+    // IMPOSTOS
     let imposto = 0;
 
-    // PJ = 15%
+    // PJ
     if (
       form.tipo === "Receita" &&
       form.origem === "PJ"
@@ -310,7 +378,7 @@ export default function App() {
       imposto = valor * 0.15;
     }
 
-    // PF = somente acima de 5k e tributável
+    // PF
     if (
       form.tipo === "Receita" &&
       form.origem === "PF" &&
@@ -320,9 +388,9 @@ export default function App() {
       imposto = valor * 0.275;
     }
 
-    // Lucros = isento
+    // LUCROS = ISENTO
 
-    if (imposto > 0) {
+    if(imposto > 0) {
 
       await supabase.from("transactions").insert([{
 
@@ -372,12 +440,13 @@ export default function App() {
 
       nome:"",
 
+      pessoa:"Ricardo",
+
       categoria:"Renda Fixa",
 
       tipo_movimento:"Aporte",
 
       valor:""
-
     });
 
     carregar();
@@ -400,12 +469,7 @@ export default function App() {
     >
 
       {/* TÍTULO */}
-      <h1
-        style={{
-          color:"#ffffff",
-          marginBottom:20
-        }}
-      >
+      <h1 style={{ color:"#ffffff" }}>
         Family Office
       </h1>
 
@@ -441,20 +505,23 @@ export default function App() {
 
         <Card title="Receitas" value={totalReceita}/>
         <Card title="Despesas" value={totalDespesa}/>
-        <Card title="Saldo" value={saldo}/>
+        <Card title="Investimentos" value={totalInvest}/>
         <Card title="Patrimônio" value={patrimonio}/>
 
       </div>
 
       {/* RELATÓRIO */}
-      <Section title="Relatório">
+      <Section title="Relatório Financeiro">
 
         <button onClick={gerarRelatorio}>
           Gerar Relatório
         </button>
 
         {relatorio && (
-          <div style={{ marginTop:15 }}>
+
+          <div style={{ marginTop:20 }}>
+
+            <h3>Balanço Geral</h3>
 
             <p>
               Receitas:
@@ -480,6 +547,54 @@ export default function App() {
               Patrimônio:
               R$ {relatorio.patrimonio.toFixed(2)}
             </h3>
+
+            <hr />
+
+            <h3>Ricardo</h3>
+
+            <p>
+              Receitas:
+              R$ {ricardo.receitas.toFixed(2)}
+            </p>
+
+            <p>
+              Despesas:
+              R$ {ricardo.despesas.toFixed(2)}
+            </p>
+
+            <p>
+              Investimentos:
+              R$ {ricardo.investimentos.toFixed(2)}
+            </p>
+
+            <p>
+              Patrimônio:
+              R$ {ricardo.patrimonio.toFixed(2)}
+            </p>
+
+            <hr />
+
+            <h3>Larissa</h3>
+
+            <p>
+              Receitas:
+              R$ {larissa.receitas.toFixed(2)}
+            </p>
+
+            <p>
+              Despesas:
+              R$ {larissa.despesas.toFixed(2)}
+            </p>
+
+            <p>
+              Investimentos:
+              R$ {larissa.investimentos.toFixed(2)}
+            </p>
+
+            <p>
+              Patrimônio:
+              R$ {larissa.patrimonio.toFixed(2)}
+            </p>
 
           </div>
         )}
@@ -510,8 +625,8 @@ export default function App() {
 
             </Pie>
 
-            <Tooltip />
-            <Legend />
+            <Tooltip/>
+            <Legend/>
 
           </PieChart>
 
@@ -519,7 +634,7 @@ export default function App() {
 
       </Section>
 
-      {/* DESPESAS POR CATEGORIA */}
+      {/* DESPESAS */}
       <Section title="Despesas por Categoria">
 
         <ResponsiveContainer width="100%" height={350}>
@@ -543,10 +658,39 @@ export default function App() {
 
             </Pie>
 
-            <Tooltip />
-            <Legend />
+            <Tooltip/>
+            <Legend/>
 
           </PieChart>
+
+        </ResponsiveContainer>
+
+      </Section>
+
+      {/* POR PESSOA */}
+      <Section title="Ricardo vs Larissa">
+
+        <ResponsiveContainer width="100%" height={350}>
+
+          <BarChart data={graficoPessoas}>
+
+            <CartesianGrid strokeDasharray="3 3"/>
+
+            <XAxis dataKey="nome"/>
+
+            <YAxis/>
+
+            <Tooltip/>
+
+            <Legend/>
+
+            <Bar dataKey="receitas" fill="#22c55e"/>
+
+            <Bar dataKey="despesas" fill="#ef4444"/>
+
+            <Bar dataKey="investimentos" fill="#3b82f6"/>
+
+          </BarChart>
 
         </ResponsiveContainer>
 
@@ -633,228 +777,6 @@ export default function App() {
 
       </Section>
 
-      {/* NOVO LANÇAMENTO */}
-      <Section title="Novo Lançamento">
-
-        <div
-          style={{
-            display:"grid",
-            gap:10
-          }}
-        >
-
-          <select
-            onChange={e=>
-              setForm({
-                ...form,
-                tipo:e.target.value
-              })
-            }
-          >
-
-            <option>Receita</option>
-            <option>Despesa</option>
-
-          </select>
-
-          <select
-            onChange={e=>
-              setForm({
-                ...form,
-                pessoa:e.target.value
-              })
-            }
-          >
-
-            <option>Ricardo</option>
-            <option>Larissa</option>
-
-          </select>
-
-          <select
-            onChange={e=>
-              setForm({
-                ...form,
-                origem:e.target.value
-              })
-            }
-          >
-
-            <option>PJ</option>
-            <option>PF</option>
-            <option>Lucros</option>
-
-          </select>
-
-          <select
-            onChange={e=>
-              setForm({
-                ...form,
-                tributavel:e.target.value === "true"
-              })
-            }
-          >
-
-            <option value="true">
-              Tributável
-            </option>
-
-            <option value="false">
-              Isento
-            </option>
-
-          </select>
-
-          <select
-            onChange={e=>
-              setForm({
-                ...form,
-                categoria:e.target.value
-              })
-            }
-          >
-
-            <option>Consultas</option>
-            <option>Moradia</option>
-            <option>Alimentação</option>
-            <option>Transporte</option>
-            <option>Lazer</option>
-            <option>Saúde</option>
-            <option>Educação</option>
-            <option>Impostos</option>
-
-          </select>
-
-          <input
-            placeholder="Descrição"
-            onChange={e=>
-              setForm({
-                ...form,
-                descricao:e.target.value
-              })
-            }
-          />
-
-          <input
-            type="number"
-            placeholder="Valor"
-            onChange={e=>
-              setForm({
-                ...form,
-                valor:e.target.value
-              })
-            }
-          />
-
-          <button onClick={salvar}>
-            Salvar
-          </button>
-
-        </div>
-
-      </Section>
-
-      {/* INVESTIMENTOS */}
-      <Section title="Investimentos">
-
-        <div
-          style={{
-            display:"grid",
-            gap:10
-          }}
-        >
-
-          <input
-            placeholder="Nome do ativo"
-            onChange={e=>
-              setFormInvest({
-                ...formInvest,
-                nome:e.target.value
-              })
-            }
-          />
-
-          <select
-            onChange={e=>
-              setFormInvest({
-                ...formInvest,
-                categoria:e.target.value
-              })
-            }
-          >
-
-            <option>Renda Fixa</option>
-            <option>Ações</option>
-            <option>FIIs</option>
-            <option>ETFs</option>
-            <option>Internacional</option>
-            <option>Cripto</option>
-
-          </select>
-
-          <select
-            onChange={e=>
-              setFormInvest({
-                ...formInvest,
-                tipo_movimento:e.target.value
-              })
-            }
-          >
-
-            <option>Aporte</option>
-            <option>Resgate</option>
-
-          </select>
-
-          <input
-            type="number"
-            placeholder="Valor"
-            onChange={e=>
-              setFormInvest({
-                ...formInvest,
-                valor:e.target.value
-              })
-            }
-          />
-
-          <button onClick={salvarInvest}>
-            Salvar Investimento
-          </button>
-
-        </div>
-
-        <div style={{ marginTop:20 }}>
-
-          {invest.map(i=>(
-
-            <div
-              key={i.id}
-              style={{
-                background:"#0f172a",
-                padding:10,
-                marginBottom:10,
-                borderRadius:8
-              }}
-            >
-
-              <strong>{i.nome}</strong>
-
-              <p>{i.categoria}</p>
-
-              <p>{i.tipo_movimento}</p>
-
-              <p>
-                R$ {Number(i.valor).toFixed(2)}
-              </p>
-
-            </div>
-
-          ))}
-
-        </div>
-
-      </Section>
-
     </div>
   );
 }
@@ -871,8 +793,7 @@ function Card({title,value}) {
       style={{
         background:"#1e293b",
         padding:20,
-        borderRadius:12,
-        boxShadow:"0 0 10px rgba(0,0,0,0.3)"
+        borderRadius:12
       }}
     >
 
@@ -899,8 +820,7 @@ function Section({title,children}) {
         marginTop:25,
         background:"#1e293b",
         padding:20,
-        borderRadius:12,
-        boxShadow:"0 0 10px rgba(0,0,0,0.3)"
+        borderRadius:12
       }}
     >
 
