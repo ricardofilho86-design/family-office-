@@ -666,31 +666,8 @@ export default function App() {
       APENAS UM INSERT DE IMPOSTO
       */
 
-      if(imposto > 0) {
-
-        const { data: existente } =
-          await supabase
-            .from("transactions")
-            .select("*")
-            .eq(
-              "descricao",
-              `IR automático sobre ${form.origem}`
-            )
-            .eq(
-              "valor",
-              imposto
-            )
-            .gte(
-              "data",
-              new Date(
-                Date.now() - 10000
-              ).toISOString()
-            );
-
-        if(
-          !existente ||
-          existente.length === 0
-        ) {
+      
+         
 
           await supabase
             .from("transactions")
