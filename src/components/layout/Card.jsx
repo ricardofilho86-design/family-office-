@@ -5,13 +5,15 @@ export default function Card({ title, value }) {
     <div
       style={{
         background:"#1e293b",
+        borderRadius:16,
         padding:20,
-        borderRadius:12,
-        boxShadow:"0 0 10px rgba(0,0,0,0.3)"
+        boxShadow:"0 0 15px rgba(0,0,0,0.3)"
       }}
     >
 
-      <p>{title}</p>
+      <p style={{ opacity:0.7 }}>
+        {title}
+      </p>
 
       <h2>
         R$ {Number(value || 0).toFixed(2)}
