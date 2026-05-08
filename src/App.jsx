@@ -835,6 +835,186 @@ export default function App() {
     }
 
   ];
+  /*
+=====================================================
+GRÁFICO POR PESSOA
+=====================================================
+*/
+
+const graficoPessoa = [
+
+  {
+    name:"Ricardo Receitas",
+    value:
+      filtrados
+        .filter(item=>
+
+          item.tipo === "Receita"
+
+          &&
+
+          item.pessoa === "Ricardo"
+
+        )
+        .reduce(
+          (a,b)=>
+            a + Number(b.valor || 0),
+          0
+        )
+  },
+
+  {
+    name:"Ricardo Despesas",
+    value:
+      filtrados
+        .filter(item=>
+
+          item.tipo === "Despesa"
+
+          &&
+
+          item.pessoa === "Ricardo"
+
+        )
+        .reduce(
+          (a,b)=>
+            a + Number(b.valor || 0),
+          0
+        )
+  },
+
+  {
+    name:"Larissa Receitas",
+    value:
+      filtrados
+        .filter(item=>
+
+          item.tipo === "Receita"
+
+          &&
+
+          item.pessoa === "Larissa"
+
+        )
+        .reduce(
+          (a,b)=>
+            a + Number(b.valor || 0),
+          0
+        )
+  },
+
+  {
+    name:"Larissa Despesas",
+    value:
+      filtrados
+        .filter(item=>
+
+          item.tipo === "Despesa"
+
+          &&
+
+          item.pessoa === "Larissa"
+
+        )
+        .reduce(
+          (a,b)=>
+            a + Number(b.valor || 0),
+          0
+        )
+  }
+
+];
+
+/*
+=====================================================
+DESPESAS POR CATEGORIA
+=====================================================
+*/
+
+const despesasCategoria =
+  Object.values(
+
+    filtrados
+      .filter(item=>
+
+        item.tipo === "Despesa"
+
+      )
+      .reduce((acc,item)=>{
+
+        if(
+          !acc[item.categoria]
+        ) {
+
+          acc[item.categoria] = {
+
+            categoria:
+              item.categoria,
+
+            valor:0
+
+          };
+
+        }
+
+        acc[item.categoria]
+          .valor +=
+            Number(item.valor || 0);
+
+        return acc;
+
+      },{})
+
+  );
+
+/*
+=====================================================
+EVOLUÇÃO PATRIMONIAL
+=====================================================
+*/
+
+let acumulado = 0;
+
+const evolucaoPatrimonial =
+
+  [...filtrados]
+
+  .sort(
+    (a,b)=>
+
+      new Date(a.data)
+      -
+      new Date(b.data)
+  )
+
+  .map(item=>{
+
+    if(item.tipo === "Receita") {
+
+      acumulado +=
+        Number(item.valor || 0);
+
+    }
+
+    if(item.tipo === "Despesa") {
+
+      acumulado -=
+        Number(item.valor || 0);
+
+    }
+
+    return {
+
+      data:
+        new Date(item.data)
+          .toLocaleDateString(),
+
+      patrimonio:
+        acumulado
+
+    };
+
+  });
 
   return (
 
@@ -930,6 +1110,239 @@ export default function App() {
         />
 
       </div>
+
+<div
+  style={{
+    display:"grid",
+    gridTemplateColumns:
+      "repeat(auto-fit,minmax(500px,1fr))",
+    gap:30,
+    marginTop:40
+  }}
+>
+
+  {/* EVOLUÇÃO PATRIMONIAL */}
+
+  <div
+    style={{
+      background:"#1e293b",
+      padding:20,
+      borderRadius:20
+    }}
+  >
+
+    <h2>
+      Evolução Patrimonial
+    </h2>
+
+    <ResponsiveContainer
+      width="100%"
+      height={350}
+    >
+
+      <LineChart
+        data={evolucaoPatrimonial}
+      >
+
+        <CartesianGrid
+          strokeDasharray="3 3"
+        />
+
+        <XAxis dataKey="data"/>
+
+        <YAxis/>
+
+        <Tooltip/>
+
+        <Legend/>
+
+        <Line
+          type="monotone"
+          dataKey="patrimonio"
+          stroke="#22c55e"
+          strokeWidth={3}
+        />
+
+      </LineChart>
+
+    </ResponsiveContainer>
+
+  </div>
+
+  {/* RECEITA E DESPESA POR PESSOA */}
+
+  <div
+    style={{
+      background:"#1e293b",
+      padding:20,
+      borderRadius:20
+    }}
+  >
+
+    <h2>
+      Ricardo x Larissa
+    </h2>
+
+    <ResponsiveContainer
+      width="100%"
+      height={350}
+    >
+
+      <BarChart
+        data={graficoPessoa}
+      >
+
+        <CartesianGrid
+          strokeDasharray="3 3"
+        />
+
+        <XAxis dataKey="name"/>
+
+        <YAxis/>
+
+        <Tooltip/>
+
+        <Legend/>
+
+        <Bar
+          dataKey="value"
+          fill="#3b82f6"
+        />
+
+      </BarChart>
+
+    </ResponsiveContainer>
+
+  </div>
+
+  {/* DESPESAS POR CATEGORIA */}
+
+  <div
+    style={{
+      background:"#1e293b",
+      padding:20,
+      borderRadius:20
+    }}
+  >
+
+    <h2>
+      Despesas por Categoria
+    </h2>
+
+    <ResponsiveContainer
+      width="100%"
+      height={350}
+    >
+
+      <PieChart>
+
+        <Pie
+          data={despesasCategoria}
+          dataKey="valor"
+          nameKey="categoria"
+          outerRadius={120}
+          label
+        >
+
+          {
+            despesasCategoria
+              .map((_,i)=>(
+
+              <Cell
+                key={i}
+                fill={
+                  COLORS[
+                    i %
+                    COLORS.length
+                  ]
+                }
+              />
+
+            ))
+          }
+
+        </Pie>
+
+        <Tooltip/>
+
+        <Legend/>
+
+      </PieChart>
+
+    </ResponsiveContainer>
+
+  </div>
+
+  {/* TABELA DESPESAS */}
+
+  <div
+    style={{
+      background:"#1e293b",
+      padding:20,
+      borderRadius:20
+    }}
+  >
+
+    <h2>
+      Tabela de Despesas
+    </h2>
+
+    <table
+      style={{
+        width:"100%",
+        color:"#fff"
+      }}
+    >
+
+      <thead>
+
+        <tr>
+
+          <th>
+            Categoria
+          </th>
+
+          <th>
+            Valor
+          </th>
+
+        </tr>
+
+      </thead>
+
+      <tbody>
+
+        {
+          despesasCategoria.map(
+            (item,i)=>(
+
+            <tr key={i}>
+
+              <td>
+                {item.categoria}
+              </td>
+
+              <td>
+                R$
+                {" "}
+                {
+                  item.valor
+                    .toFixed(2)
+                }
+              </td>
+
+            </tr>
+
+          ))
+        }
+
+      </tbody>
+
+    </table>
+
+  </div>
+
+</div>
 
       <div
         id="relatorio-pdf"
