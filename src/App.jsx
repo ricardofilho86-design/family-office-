@@ -347,13 +347,15 @@ export default function App() {
 
   const patrimonio =
 
+  (
     receitas
     -
     despesasSemImposto
     -
     impostos
-    +
-    investimentos;
+  )
+  +
+  investimentos;
 
   /*
   =====================================================
