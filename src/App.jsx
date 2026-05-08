@@ -43,21 +43,45 @@ export default function App() {
   const [salvandoReceita, setSalvandoReceita] =
     useState(false);
 
-  const [form, setForm] = useState({
+ /*
+=====================================================
+FORM RECEITA
+=====================================================
+*/
 
-    pessoa:"Ricardo",
+const [formReceita, setFormReceita] = useState({
 
-    origem:"PJ",
+  pessoa:"Ricardo",
 
-    categoria:"Consultas",
+  origem:"PJ",
 
-    descricao:"",
+  categoria:"Consultas",
 
-    valor:"",
+  descricao:"",
 
-    tributavel:true
+  valor:"",
 
-  });
+  tributavel:true
+
+});
+
+/*
+=====================================================
+FORM DESPESA
+=====================================================
+*/
+
+const [formDespesa, setFormDespesa] = useState({
+
+  pessoa:"Ricardo",
+
+  categoria:"Moradia",
+
+  descricao:"",
+
+  valor:""
+
+});
 
   const [formInvest, setFormInvest] = useState({
 
@@ -486,48 +510,191 @@ export default function App() {
       );
 
   /*
-  =====================================================
-  SALVAR RECEITA
-  =====================================================
-  */
+ /*
+=====================================================
+SALVAR RECEITA
+=====================================================
+*/
 
-  async function salvarReceita() {
+async function salvarReceita() {
 
-    if(salvandoReceita) {
-      return;
+  if(salvandoReceita) {
+    return;
+  }
+
+  setSalvandoReceita(true);
+
+  try {
+
+    const valor =
+      Number(formReceita.valor);
+
+    /*
+    =======================================
+    INSERE RECEITA
+    =======================================
+    */
+
+    await supabase
+      .from("transactions")
+      .insert([{
+
+        tipo:"Receita",
+
+        pessoa:
+          formReceita.pessoa,
+
+        origem:
+          formReceita.origem,
+
+        categoria:
+          formReceita.categoria,
+
+        descricao:
+          formReceita.descricao,
+
+        valor:valor,
+
+        tributavel:
+          formReceita.tributavel,
+
+        data:
+          new Date()
+            .toISOString()
+
+      }]);
+
+    /*
+    =======================================
+    CALCULA IMPOSTO
+    =======================================
+    */
+
+    let imposto = 0;
+
+    /*
+    PJ
+    */
+
+    if(
+      formReceita.origem === "PJ"
+    ) {
+
+      imposto =
+        valor * 0.15;
     }
 
-    setSalvandoReceita(true);
+    /*
+    LUCROS ISENTOS
+    */
 
-    try {
+    else if(
+      formReceita.origem === "Lucros"
+    ) {
 
-      const valor =
-        Number(form.valor);
+      imposto = 0;
+    }
 
-      /*
-      =======================================
-      INSERE RECEITA
-      =======================================
-      */
+    /*
+    PF
+    */
+
+    else if(
+
+      formReceita.origem === "PF"
+
+      &&
+
+      formReceita.tributavel === true
+
+    ) {
+
+      if(valor <= 5000) {
+
+        imposto = 0;
+      }
+
+      else {
+
+        if(valor <= 2826.65) {
+
+          imposto =
+            valor * 0.075 - 182.16;
+
+        }
+
+        else if(valor <= 3751.05) {
+
+          imposto =
+            valor * 0.15 - 394.16;
+
+        }
+
+        else if(valor <= 4664.68) {
+
+          imposto =
+            valor * 0.225 - 675.49;
+
+        }
+
+        else {
+
+          imposto =
+            valor * 0.275 - 908.73;
+
+        }
+
+        if(valor <= 7350) {
+
+          imposto -=
+
+            978.62
+            -
+            (
+              0.133145 *
+              valor
+            );
+
+        }
+
+        if(imposto < 0) {
+          imposto = 0;
+        }
+
+      }
+
+    }
+
+    imposto =
+      Number(
+        imposto.toFixed(2)
+      );
+
+    /*
+    =======================================
+    INSERE IMPOSTO
+    =======================================
+    */
+
+    if(imposto > 0) {
 
       await supabase
         .from("transactions")
         .insert([{
 
-          tipo:"Receita",
+          tipo:"Despesa",
 
-          pessoa:form.pessoa,
+          pessoa:
+            formReceita.pessoa,
 
-          origem:form.origem,
+          origem:"Imposto",
 
-          categoria:form.categoria,
+          categoria:"Impostos",
 
-          descricao:form.descricao,
+          descricao:
+            `IR automático sobre ${formReceita.origem}`,
 
-          valor:valor,
-
-          tributavel:
-            form.tributavel,
+          valor:imposto,
 
           data:
             new Date()
@@ -535,192 +702,51 @@ export default function App() {
 
         }]);
 
-      /*
-      =======================================
-      CALCULA IMPOSTO
-      =======================================
-      */
-
-      let imposto = 0;
-
-      /*
-      PJ
-      */
-
-      if(
-        form.origem === "PJ"
-      ) {
-
-        imposto =
-          valor * 0.15;
-      }
-
-      /*
-      LUCROS ISENTOS
-      */
-
-      else if(
-        form.origem === "Lucros"
-      ) {
-
-        imposto = 0;
-      }
-
-      /*
-      PF
-      */
-
-      else if(
-
-        form.origem === "PF"
-
-        &&
-
-        form.tributavel === true
-
-      ) {
-
-        if(valor <= 5000) {
-
-          imposto = 0;
-        }
-
-        else {
-
-          if(valor <= 2826.65) {
-
-            imposto =
-              valor * 0.075 - 182.16;
-
-          }
-
-          else if(valor <= 3751.05) {
-
-            imposto =
-              valor * 0.15 - 394.16;
-
-          }
-
-          else if(valor <= 4664.68) {
-
-            imposto =
-              valor * 0.225 - 675.49;
-
-          }
-
-          else {
-
-            imposto =
-              valor * 0.275 - 908.73;
-
-          }
-
-          /*
-          REDUTOR
-          */
-
-          if(valor <= 7350) {
-
-            imposto -=
-
-              978.62
-              -
-              (
-                0.133145 *
-                valor
-              );
-
-          }
-
-          if(imposto < 0) {
-            imposto = 0;
-          }
-
-        }
-
-      }
-
-      imposto =
-        Number(
-          imposto.toFixed(2)
-        );
-
-      /*
-      =======================================
-      APENAS UM INSERT DE IMPOSTO
-      =======================================
-      */
-
-      if(imposto > 0) {
-
-        await supabase
-          .from("transactions")
-          .insert([{
-
-            tipo:"Despesa",
-
-            pessoa:form.pessoa,
-
-            origem:"Imposto",
-
-            categoria:"Impostos",
-
-            descricao:
-              `IR automático sobre ${form.origem}`,
-
-            valor:imposto,
-
-            data:
-              new Date()
-                .toISOString()
-
-          }]);
-
-      }
-
-      /*
-      =======================================
-      RESET
-      =======================================
-      */
-
-      setForm({
-
-        pessoa:"Ricardo",
-
-        origem:"PJ",
-
-        categoria:"Consultas",
-
-        descricao:"",
-
-        valor:"",
-
-        tributavel:true
-
-      });
-
-      carregar();
-
     }
 
-    catch(error) {
+    /*
+    =======================================
+    RESET
+    =======================================
+    */
 
-      console.log(error);
+    setFormReceita({
 
-      alert(
-        "Erro ao salvar receita"
-      );
+      pessoa:"Ricardo",
 
-    }
+      origem:"PJ",
 
-    finally {
+      categoria:"Consultas",
 
-      setSalvandoReceita(false);
+      descricao:"",
 
-    }
+      valor:"",
+
+      tributavel:true
+
+    });
+
+    carregar();
 
   }
+
+  catch(error) {
+
+    console.log(error);
+
+    alert(
+      "Erro ao salvar receita"
+    );
+
+  }
+
+  finally {
+
+    setSalvandoReceita(false);
+
+  }
+
+}
 
   /*
   =====================================================
@@ -752,6 +778,17 @@ export default function App() {
             .toISOString()
 
       }]);
+setFormDespesa({
+
+  pessoa:"Ricardo",
+
+  categoria:"Moradia",
+
+  descricao:"",
+
+  valor:""
+
+});
 
     carregar();
 
@@ -792,9 +829,52 @@ export default function App() {
 
       }]);
 
+      setFormInvest({
+
+  nome:"",
+
+  pessoa:"Ricardo",
+
+  categoria:"Renda Fixa",
+
+  tipo_movimento:"Aporte",
+
+  valor:""
+
+});
+
     carregar();
 
   }
+
+  /*
+=====================================================
+EXCLUIR LANÇAMENTO
+=====================================================
+*/
+
+async function excluirLancamento(
+  tabela,
+  id
+) {
+
+  const confirmar =
+    window.confirm(
+      "Deseja realmente excluir este lançamento?"
+    );
+
+  if(!confirmar) {
+    return;
+  }
+
+  await supabase
+    .from(tabela)
+    .delete()
+    .eq("id", id);
+
+  carregar();
+
+}
 
   /*
   =====================================================
@@ -1072,14 +1152,14 @@ const evolucaoPatrimonial =
       >
 
         <ReceitaForm
-          form={form}
-          setForm={setForm}
+  form={formReceita}
+  setForm={setFormReceita}
           salvar={salvarReceita}
         />
 
         <DespesaForm
-          form={form}
-          setForm={setForm}
+  form={formDespesa}
+  setForm={setFormDespesa}
           salvar={salvarDespesa}
         />
 
@@ -1321,6 +1401,232 @@ const evolucaoPatrimonial =
     </table>
 
   </div>
+
+</div>
+
+/*
+=====================================================
+HISTÓRICO DE LANÇAMENTOS
+=====================================================
+*/
+
+<div
+  style={{
+    marginTop:40,
+    background:"#1e293b",
+    padding:25,
+    borderRadius:20
+  }}
+>
+
+  <h2>
+    Histórico de Lançamentos
+  </h2>
+
+  <table
+    style={{
+      width:"100%",
+      color:"#ffffff",
+      marginTop:20
+    }}
+  >
+
+    <thead>
+
+      <tr>
+
+        <th>Data</th>
+
+        <th>Tipo</th>
+
+        <th>Pessoa</th>
+
+        <th>Categoria</th>
+
+        <th>Descrição</th>
+
+        <th>Valor</th>
+
+        <th>Ações</th>
+
+      </tr>
+
+    </thead>
+
+    <tbody>
+
+      {
+        filtrados.map((item,i)=>(
+
+          <tr key={i}>
+
+            <td>
+
+              {
+                new Date(item.data)
+                  .toLocaleDateString()
+              }
+
+            </td>
+
+            <td>
+              {item.tipo}
+            </td>
+
+            <td>
+              {item.pessoa}
+            </td>
+
+            <td>
+              {item.categoria}
+            </td>
+
+            <td>
+              {item.descricao}
+            </td>
+
+            <td>
+
+              R$
+              {" "}
+
+              {
+                Number(item.valor || 0)
+                  .toFixed(2)
+              }
+
+            </td>
+
+            <td>
+
+              <button
+
+                onClick={()=>
+
+                  excluirLancamento(
+                    "transactions",
+                    item.id
+                  )
+
+                }
+
+                style={{
+
+                  background:"#ef4444",
+
+                  color:"#fff",
+
+                  border:"none",
+
+                  padding:"8px 12px",
+
+                  borderRadius:8,
+
+                  cursor:"pointer"
+
+                }}
+              >
+
+                Excluir
+
+              </button>
+
+            </td>
+
+          </tr>
+
+        ))
+      }
+
+      {
+        investimentosFiltrados.map(
+          (item,i)=>(
+
+          <tr
+            key={`invest-${i}`}
+          >
+
+            <td>
+
+              {
+                new Date(item.data)
+                  .toLocaleDateString()
+              }
+
+            </td>
+
+            <td>
+              Investimento
+            </td>
+
+            <td>
+              {item.pessoa}
+            </td>
+
+            <td>
+              {item.categoria}
+            </td>
+
+            <td>
+              {item.nome}
+            </td>
+
+            <td>
+
+              R$
+              {" "}
+
+              {
+                Number(item.valor || 0)
+                  .toFixed(2)
+              }
+
+            </td>
+
+            <td>
+
+              <button
+
+                onClick={()=>
+
+                  excluirLancamento(
+                    "investimentos",
+                    item.id
+                  )
+
+                }
+
+                style={{
+
+                  background:"#ef4444",
+
+                  color:"#fff",
+
+                  border:"none",
+
+                  padding:"8px 12px",
+
+                  borderRadius:8,
+
+                  cursor:"pointer"
+
+                }}
+              >
+
+                Excluir
+
+              </button>
+
+            </td>
+
+          </tr>
+
+        ))
+      }
+
+    </tbody>
+
+  </table>
 
 </div>
 
