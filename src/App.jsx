@@ -141,32 +141,22 @@ export default function App() {
       return dados.filter(item=>{
 
         const data =
-          new Date(item.data);
+  item.data
+    ?.split("T")[0];
 
-        if(
-          inicio &&
-          data < new Date(inicio)
-        ) {
+       if(
+  inicio &&
+  data < inicio
+) {
           return false;
         }
 
-        if(fim) {
-
-          const dataFim =
-            new Date(fim);
-
-          dataFim.setHours(
-            23,
-            59,
-            59,
-            999
-          );
-
-          if(data > dataFim) {
-            return false;
-          }
-
-        }
+       if(
+  fim &&
+  data > fim
+) {
+  return false;
+}
 
         return true;
 
@@ -190,32 +180,22 @@ export default function App() {
       return investimentosData.filter(item=>{
 
         const data =
-          new Date(item.data);
+  item.data
+    ?.split("T")[0];
 
         if(
-          inicio &&
-          data < new Date(inicio)
-        ) {
+  inicio &&
+  data < inicio
+) {
           return false;
         }
 
-        if(fim) {
-
-          const dataFim =
-            new Date(fim);
-
-          dataFim.setHours(
-            23,
-            59,
-            59,
-            999
-          );
-
-          if(data > dataFim) {
-            return false;
-          }
-
-        }
+        if(
+  fim &&
+  data > fim
+) {
+  return false;
+}
 
         return true;
 
