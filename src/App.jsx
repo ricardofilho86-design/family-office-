@@ -253,19 +253,23 @@ export default function App() {
   =====================================================
   */
 
-  const despesas =
-    filtrados
-      .filter(item=>
+ const despesas =
+  filtrados
+    .filter(item=>
 
-        item.tipo === "Despesa"
+      item.tipo === "Despesa"
 
-      )
-      .reduce(
-        (acc,item)=>
-          acc +
-          Number(item.valor || 0),
-        0
-      );
+      &&
+
+      item.categoria !== "Investimentos"
+
+    )
+    .reduce(
+      (acc,item)=>
+        acc +
+        Number(item.valor || 0),
+      0
+    );
 
   /*
   =====================================================
@@ -294,22 +298,26 @@ export default function App() {
   */
 
   const despesasSemImposto =
-    filtrados
-      .filter(item=>
+  filtrados
+    .filter(item=>
 
-        item.tipo === "Despesa"
+      item.tipo === "Despesa"
 
-        &&
+      &&
 
-        item.categoria !== "Impostos"
+      item.categoria !== "Impostos"
 
-      )
-      .reduce(
-        (acc,item)=>
-          acc +
-          Number(item.valor || 0),
-        0
-      );
+      &&
+
+      item.categoria !== "Investimentos"
+
+    )
+    .reduce(
+      (acc,item)=>
+        acc +
+        Number(item.valor || 0),
+      0
+    );
 
   /*
   =====================================================
