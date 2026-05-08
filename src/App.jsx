@@ -1243,12 +1243,13 @@ const evolucaoPatrimonial =
     }}
   >
 
-    <h2>
-      style={{
-  color:"#ffffff"
-}}
-      Ricardo x Larissa
-    </h2>
+    <h2
+  style={{
+    color:"#ffffff"
+  }}
+>
+  Ricardo x Larissa
+</h2>
 
     <ResponsiveContainer
       width="100%"
@@ -1354,11 +1355,13 @@ const evolucaoPatrimonial =
     }}
   >
 
-    <h2>style={{
-  color:"#ffffff"
-}}
-      Tabela de Despesas
-    </h2>
+    <h2
+  style={{
+    color:"#ffffff"
+  }}
+>
+  Tabela de Despesas
+</h2>
 
     <table
       style={{
