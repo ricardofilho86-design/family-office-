@@ -1192,6 +1192,9 @@ const evolucaoPatrimonial =
   >
 
     <h2>
+      style={{
+  color:"#ffffff"
+}}
       Evolução Patrimonial
     </h2>
 
@@ -1240,6 +1243,9 @@ const evolucaoPatrimonial =
   >
 
     <h2>
+      style={{
+  color:"#ffffff"
+}}
       Ricardo x Larissa
     </h2>
 
@@ -1285,7 +1291,11 @@ const evolucaoPatrimonial =
     }}
   >
 
-    <h2>
+    <h2
+      style={{
+        color:"#ffffff"
+      }}
+    >
       Despesas por Categoria
     </h2>
 
@@ -1343,7 +1353,9 @@ const evolucaoPatrimonial =
     }}
   >
 
-    <h2>
+    <h2>style={{
+  color:"#ffffff"
+}}
       Tabela de Despesas
     </h2>
 
@@ -1404,11 +1416,11 @@ const evolucaoPatrimonial =
 
 </div>
 
-/*
+{/*
 =====================================================
 HISTÓRICO DE LANÇAMENTOS
 =====================================================
-*/
+*/}
 
 <div
   style={{
@@ -1419,7 +1431,11 @@ HISTÓRICO DE LANÇAMENTOS
   }}
 >
 
-  <h2>
+  <h2
+    style={{
+      color:"#ffffff"
+    }}
+  >
     Histórico de Lançamentos
   </h2>
 
@@ -1645,7 +1661,11 @@ HISTÓRICO DE LANÇAMENTOS
           }}
         >
 
-          <h2>
+          <h2
+            style={{
+              color:"#ffffff"
+            }}
+          >
             Receitas x Despesas
           </h2>
 
@@ -1703,7 +1723,11 @@ HISTÓRICO DE LANÇAMENTOS
           }}
         >
 
-          <h2>
+          <h2
+            style={{
+              color:"#ffffff"
+            }}
+            >
             Relatórios
           </h2>
 
@@ -1724,9 +1748,13 @@ HISTÓRICO DE LANÇAMENTOS
               }}
             >
 
-              <h3>
-                Relatório Semanal
-              </h3>
+              <h3
+  style={{
+    color:"#ffffff"
+  }}
+>
+  Relatório Mensal
+</h3>
 
               <p>
                 Receitas:
