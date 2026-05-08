@@ -1191,12 +1191,13 @@ const evolucaoPatrimonial =
     }}
   >
 
-    <h2>
-      style={{
-  color:"#ffffff"
-}}
-      Evolução Patrimonial
-    </h2>
+   <h2
+  style={{
+    color:"#ffffff"
+  }}
+>
+  Evolução Patrimonial
+</h2>
 
     <ResponsiveContainer
       width="100%"
