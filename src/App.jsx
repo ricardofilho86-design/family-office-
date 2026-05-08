@@ -42,7 +42,12 @@ export default function App() {
 
   const [salvandoReceita, setSalvandoReceita] =
     useState(false);
+    
+const [salvandoDespesa, setSalvandoDespesa] =
+  useState(false);
 
+const [salvandoInvest, setSalvandoInvest] =
+  useState(false);
  /*
 =====================================================
 FORM RECEITA
@@ -261,13 +266,17 @@ const [formDespesa, setFormDespesa] = useState({
   filtrados
     .filter(item=>
 
-      item.tipo === "Despesa"
+  item.tipo === "Despesa"
 
-      &&
+  &&
 
-      item.categoria !== "Investimentos"
+  item.categoria !== "Impostos"
 
-    )
+  &&
+
+  item.categoria !== "Investimentos"
+
+)
     .reduce(
       (acc,item)=>
         acc +
@@ -754,7 +763,15 @@ async function salvarReceita() {
   =====================================================
   */
 
-  async function salvarDespesa() {
+ async function salvarDespesa() {
+
+  if(salvandoDespesa) {
+    return;
+  }
+
+  setSalvandoDespesa(true);
+
+  try {
 
     await supabase
       .from("transactions")
@@ -762,37 +779,46 @@ async function salvarReceita() {
 
         tipo:"Despesa",
 
-        pessoa:form.pessoa,
+        pessoa:formDespesa.pessoa,
 
         origem:"Despesa",
 
-        categoria:form.categoria,
+        categoria:formDespesa.categoria,
 
-        descricao:form.descricao,
+        descricao:formDespesa.descricao,
 
         valor:
-          Number(form.valor),
+          Number(formDespesa.valor),
 
         data:
           new Date()
             .toISOString()
 
       }]);
-setFormDespesa({
 
-  pessoa:"Ricardo",
+    setFormDespesa({
 
-  categoria:"Moradia",
+      pessoa:"Ricardo",
 
-  descricao:"",
+      categoria:"Moradia",
 
-  valor:""
+      descricao:"",
 
-});
+      valor:""
+
+    });
 
     carregar();
 
   }
+
+  finally {
+
+    setSalvandoDespesa(false);
+
+  }
+
+}
 
   /*
   =====================================================
@@ -801,6 +827,14 @@ setFormDespesa({
   */
 
   async function salvarInvest() {
+
+  if(salvandoInvest) {
+    return;
+  }
+
+  setSalvandoInvest(true);
+
+  try {
 
     await supabase
       .from("investimentos")
@@ -829,23 +863,31 @@ setFormDespesa({
 
       }]);
 
-      setFormInvest({
+    setFormInvest({
 
-  nome:"",
+      nome:"",
 
-  pessoa:"Ricardo",
+      pessoa:"Ricardo",
 
-  categoria:"Renda Fixa",
+      categoria:"Renda Fixa",
 
-  tipo_movimento:"Aporte",
+      tipo_movimento:"Aporte",
 
-  valor:""
+      valor:""
 
-});
+    });
 
     carregar();
 
   }
+
+  finally {
+
+    setSalvandoInvest(false);
+
+  }
+
+}
 
   /*
 =====================================================
@@ -997,9 +1039,17 @@ const despesasCategoria =
     filtrados
       .filter(item=>
 
-        item.tipo === "Despesa"
+  item.tipo === "Despesa"
 
-      )
+  &&
+
+  item.categoria !== "Impostos"
+
+  &&
+
+  item.categoria !== "Investimentos"
+
+)
       .reduce((acc,item)=>{
 
         if(
@@ -1037,7 +1087,27 @@ let acumulado = 0;
 
 const evolucaoPatrimonial =
 
-  [...filtrados]
+  [
+
+    ...filtrados.map(item=>({
+
+      ...item,
+
+      origemTabela:"transactions"
+
+    })),
+
+    ...investimentosFiltrados.map(item=>({
+
+      ...item,
+
+      tipo:"Investimento",
+
+      origemTabela:"investimentos"
+
+    }))
+
+  ]
 
   .sort(
     (a,b)=>
@@ -1049,6 +1119,10 @@ const evolucaoPatrimonial =
 
   .map(item=>{
 
+    /*
+    RECEITAS
+    */
+
     if(item.tipo === "Receita") {
 
       acumulado +=
@@ -1056,10 +1130,46 @@ const evolucaoPatrimonial =
 
     }
 
-    if(item.tipo === "Despesa") {
+    /*
+    DESPESAS
+    */
+
+    if(
+
+      item.tipo === "Despesa"
+
+      &&
+
+      item.categoria !== "Investimentos"
+
+    ) {
 
       acumulado -=
         Number(item.valor || 0);
+
+    }
+
+    /*
+    INVESTIMENTOS
+    */
+
+    if(item.tipo === "Investimento") {
+
+      if(
+        item.tipo_movimento === "Aporte"
+      ) {
+
+        acumulado +=
+          Number(item.valor || 0);
+
+      }
+
+      else {
+
+        acumulado -=
+          Number(item.valor || 0);
+
+      }
 
     }
 
@@ -1431,7 +1541,8 @@ HISTÓRICO DE LANÇAMENTOS
     marginTop:40,
     background:"#1e293b",
     padding:25,
-    borderRadius:20
+    borderRadius:20,
+    overflowX:"auto"
   }}
 >
 
@@ -1475,174 +1586,126 @@ HISTÓRICO DE LANÇAMENTOS
 
     <tbody>
 
-      {
-        filtrados.map((item,i)=>(
+     {
+  [
 
-          <tr key={i}>
+    ...filtrados.map(item=>({
 
-            <td>
+      ...item,
 
-              {
-                new Date(item.data)
-                  .toLocaleDateString()
-              }
+      tabela:"transactions",
 
-            </td>
+      tipoRegistro:"Financeiro"
 
-            <td>
-              {item.tipo}
-            </td>
+    })),
 
-            <td>
-              {item.pessoa}
-            </td>
+    ...investimentosFiltrados.map(item=>({
 
-            <td>
-              {item.categoria}
-            </td>
+      ...item,
 
-            <td>
-              {item.descricao}
-            </td>
+      tabela:"investimentos",
 
-            <td>
+      tipo:"Investimento",
 
-              R$
-              {" "}
+      descricao:item.nome,
 
-              {
-                Number(item.valor || 0)
-                  .toFixed(2)
-              }
+      tipoRegistro:"Investimento"
 
-            </td>
+    }))
 
-            <td>
+  ]
 
-              <button
+  .sort(
+    (a,b)=>
 
-                onClick={()=>
+      new Date(b.data)
+      -
+      new Date(a.data)
+  )
 
-                  excluirLancamento(
-                    "transactions",
-                    item.id
-                  )
+  .map((item,i)=>(
 
-                }
+    <tr key={`${item.tabela}-${item.id}`}>
 
-                style={{
+      <td>
 
-                  background:"#ef4444",
+        {
+          new Date(item.data)
+            .toLocaleDateString()
+        }
 
-                  color:"#fff",
+      </td>
 
-                  border:"none",
+      <td>
+        {item.tipo}
+      </td>
 
-                  padding:"8px 12px",
+      <td>
+        {item.pessoa}
+      </td>
 
-                  borderRadius:8,
+      <td>
+        {item.categoria}
+      </td>
 
-                  cursor:"pointer"
+      <td>
+        {item.descricao}
+      </td>
 
-                }}
-              >
+      <td>
 
-                Excluir
+        R$
+        {" "}
 
-              </button>
+        {
+          Number(item.valor || 0)
+            .toFixed(2)
+        }
 
-            </td>
+      </td>
 
-          </tr>
+      <td>
 
-        ))
-      }
+        <button
 
-      {
-        investimentosFiltrados.map(
-          (item,i)=>(
+          onClick={()=>
 
-          <tr
-            key={`invest-${i}`}
-          >
+            excluirLancamento(
+              item.tabela,
+              item.id
+            )
 
-            <td>
+          }
 
-              {
-                new Date(item.data)
-                  .toLocaleDateString()
-              }
+          style={{
 
-            </td>
+            background:"#ef4444",
 
-            <td>
-              Investimento
-            </td>
+            color:"#fff",
 
-            <td>
-              {item.pessoa}
-            </td>
+            border:"none",
 
-            <td>
-              {item.categoria}
-            </td>
+            padding:"8px 12px",
 
-            <td>
-              {item.nome}
-            </td>
+            borderRadius:8,
 
-            <td>
+            cursor:"pointer"
 
-              R$
-              {" "}
+          }}
+        >
 
-              {
-                Number(item.valor || 0)
-                  .toFixed(2)
-              }
+          Excluir
 
-            </td>
+        </button>
 
-            <td>
+      </td>
 
-              <button
+    </tr>
 
-                onClick={()=>
+  ))
+}
 
-                  excluirLancamento(
-                    "investimentos",
-                    item.id
-                  )
-
-                }
-
-                style={{
-
-                  background:"#ef4444",
-
-                  color:"#fff",
-
-                  border:"none",
-
-                  padding:"8px 12px",
-
-                  borderRadius:8,
-
-                  cursor:"pointer"
-
-                }}
-              >
-
-                Excluir
-
-              </button>
-
-            </td>
-
-          </tr>
-
-        ))
-      }
+      
 
     </tbody>
 
@@ -1757,7 +1820,7 @@ HISTÓRICO DE LANÇAMENTOS
     color:"#ffffff"
   }}
 >
-  Relatório Mensal
+  Relatório Semanal
 </h3>
 
               <p>
@@ -1792,9 +1855,13 @@ HISTÓRICO DE LANÇAMENTOS
               }}
             >
 
-              <h3>
-                Relatório Mensal
-              </h3>
+              <h3
+  style={{
+    color:"#ffffff"
+  }}
+>
+  Relatório Mensal
+</h3>
 
               <p>
                 Receitas:
