@@ -1524,9 +1524,36 @@ const evolucaoPatrimonial =
         <Legend/>
 
         <Bar
-          dataKey="value"
-          fill="#3b82f6"
-        />
+  dataKey="value"
+>
+
+  {
+
+    graficoPessoa.map((item,i)=>(
+
+      <Cell
+
+        key={i}
+
+        fill={
+
+          item.name.includes(
+            "Receitas"
+          )
+
+          ? "#22c55e"
+
+          : "#ef4444"
+
+        }
+
+      />
+
+    ))
+
+  }
+
+</Bar>
 
       </BarChart>
 
