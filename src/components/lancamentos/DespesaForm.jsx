@@ -42,15 +42,85 @@ export default function DespesaForm({
         }
       >
 
-        <option>Moradia</option>
-        <option>Alimentação</option>
-        <option>Transporte</option>
-        <option>Viagens</option>
-        <option>Saúde</option>
-        <option>Educação</option>
-        <option>Impostos</option>
-        <option>Cartão</option>
-        <option>Lazer</option>
+<option>
+  Moradia
+</option>
+
+<option>
+  Alimentação Diária
+</option>
+
+<option>
+  Saídas e Restaurantes
+</option>
+
+<option>
+  Delivery
+</option>
+
+<option>
+  Lanches
+</option>
+
+<option>
+  Cafezinhos
+</option>
+
+<option>
+  Uber
+</option>
+
+<option>
+  Passagens Aéreas
+</option>
+
+<option>
+  Presentes
+</option>
+
+<option>
+  Terapia
+</option>
+
+<option>
+  Fisioterapia
+</option>
+
+<option>
+  Academia
+</option>
+
+<option>
+  Streaming
+</option>
+
+<option>
+  Saúde
+</option>
+
+<option>
+  Educação
+</option>
+
+<option>
+  Lazer
+</option>
+
+<option>
+  Transporte
+</option>
+
+<option>
+  Impostos
+</option>
+
+<option>
+  Seguro
+</option>
+
+<option>
+  Outros
+</option>
 
       </select>
 
