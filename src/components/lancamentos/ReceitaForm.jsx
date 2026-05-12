@@ -107,24 +107,24 @@ export default function ReceitaForm({
       >
 
         <option>
-          Consultas
-        </option>
+  Consultas
+</option>
 
-        <option>
-          Salário
-        </option>
+<option>
+  Cirurgia
+</option>
 
-        <option>
-          Dividendos
-        </option>
+<option>
+  Plantão
+</option>
 
-        <option>
-          Freelance
-        </option>
+<option>
+  Atendimentos
+</option>
 
-        <option>
-          Outros
-        </option>
+<option>
+  Exames
+</option>
 
       </select>
 

@@ -284,6 +284,24 @@ const [formDespesa, setFormDespesa] = useState({
       0
     );
 
+    const despesasTotais =
+  filtrados
+    .filter(item=>
+
+      item.tipo === "Despesa"
+
+      &&
+
+      item.categoria !== "Investimentos"
+
+    )
+    .reduce(
+      (acc,item)=>
+        acc +
+        Number(item.valor || 0),
+      0
+    );
+
   /*
   =====================================================
   IMPOSTOS
@@ -936,9 +954,9 @@ async function excluirLancamento(
     },
 
     {
-      name:"Despesas",
-      value:despesas
-    }
+  name:"Despesas",
+  value:despesasTotais
+}
 
   ];
   /*
@@ -1031,6 +1049,59 @@ const graficoPessoa = [
 
 ];
 
+const graficoTipos =
+
+  Object.values(
+
+    filtrados.reduce((acc,item)=>{
+
+      const chave =
+
+        `${item.tipo}-${item.categoria}`;
+
+      if(!acc[chave]) {
+
+        acc[chave] = {
+
+          categoria:
+            item.categoria,
+
+          receitas:0,
+
+          despesas:0
+
+        };
+
+      }
+
+      if(item.tipo === "Receita") {
+
+        acc[chave].receitas +=
+          Number(item.valor || 0);
+
+      }
+
+      if(
+
+        item.tipo === "Despesa"
+
+        &&
+
+        item.categoria !== "Investimentos"
+
+      ) {
+
+        acc[chave].despesas +=
+          Number(item.valor || 0);
+
+      }
+
+      return acc;
+
+    },{})
+
+  );
+
 /*
 =====================================================
 DESPESAS POR CATEGORIA
@@ -1038,48 +1109,48 @@ DESPESAS POR CATEGORIA
 */
 
 const despesasCategoria =
-  Object.values(
+  useMemo(()=>{
 
-    filtrados
-      .filter(item=>
+    return Object.values(
 
-  item.tipo === "Despesa"
+      filtrados
+        .filter(item=>
 
-  &&
+          item.tipo === "Despesa"
 
-  item.categoria !== "Impostos"
+          &&
 
-  &&
+          item.categoria !== "Investimentos"
 
-  item.categoria !== "Investimentos"
+        )
+        .reduce((acc,item)=>{
 
-)
-      .reduce((acc,item)=>{
+          if(
+            !acc[item.categoria]
+          ) {
 
-        if(
-          !acc[item.categoria]
-        ) {
+            acc[item.categoria] = {
 
-          acc[item.categoria] = {
+              categoria:
+                item.categoria,
 
-            categoria:
-              item.categoria,
+              valor:0
 
-            valor:0
+            };
 
-          };
+          }
 
-        }
+          acc[item.categoria]
+            .valor +=
+              Number(item.valor || 0);
 
-        acc[item.categoria]
-          .valor +=
-            Number(item.valor || 0);
+          return acc;
 
-        return acc;
+        },{})
 
-      },{})
+    );
 
-  );
+  },[filtrados]);
 
 /*
 =====================================================
@@ -1346,6 +1417,61 @@ const evolucaoPatrimonial =
     </ResponsiveContainer>
 
   </div>
+
+  <div
+  style={{
+    background:"#1e293b",
+    padding:20,
+    borderRadius:20
+  }}
+>
+
+  <h2
+    style={{
+      color:"#ffffff"
+    }}
+  >
+    Receitas e Despesas por Categoria
+  </h2>
+
+  <ResponsiveContainer
+    width="100%"
+    height={350}
+  >
+
+    <BarChart
+      data={graficoTipos}
+    >
+
+      <CartesianGrid
+        strokeDasharray="3 3"
+      />
+
+      <XAxis
+        dataKey="categoria"
+      />
+
+      <YAxis/>
+
+      <Tooltip/>
+
+      <Legend/>
+
+      <Bar
+        dataKey="receitas"
+        fill="#22c55e"
+      />
+
+      <Bar
+        dataKey="despesas"
+        fill="#ef4444"
+      />
+
+    </BarChart>
+
+  </ResponsiveContainer>
+
+</div>
 
   {/* RECEITA E DESPESA POR PESSOA */}
 
