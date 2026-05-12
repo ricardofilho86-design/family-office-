@@ -1521,8 +1521,6 @@ const evolucaoPatrimonial =
 
         <Tooltip/>
 
-        <Legend/>
-
         <Bar
   dataKey="value"
 >
