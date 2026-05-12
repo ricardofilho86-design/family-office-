@@ -735,7 +735,7 @@ async function salvarReceita() {
 
     });
 
-    carregar();
+    await carregar();
 
   }
 
@@ -787,12 +787,9 @@ async function salvarReceita() {
 
         descricao:formDespesa.descricao,
 
-        valor:
-          Number(formDespesa.valor),
+        valor:Number(formDespesa.valor),
 
-        data:
-          new Date()
-            .toISOString()
+        data:new Date().toISOString()
 
       }]);
 
@@ -808,7 +805,15 @@ async function salvarReceita() {
 
     });
 
-    carregar();
+    await carregar();
+
+  }
+
+  catch(error) {
+
+    console.log(error);
+
+    alert("Erro ao salvar despesa");
 
   }
 
@@ -840,26 +845,17 @@ async function salvarReceita() {
       .from("investimentos")
       .insert([{
 
-        nome:
-          formInvest.nome,
+        nome:formInvest.nome,
 
-        pessoa:
-          formInvest.pessoa,
+        pessoa:formInvest.pessoa,
 
-        categoria:
-          formInvest.categoria,
+        categoria:formInvest.categoria,
 
-        tipo_movimento:
-          formInvest.tipo_movimento,
+        tipo_movimento:formInvest.tipo_movimento,
 
-        valor:
-          Number(
-            formInvest.valor
-          ),
+        valor:Number(formInvest.valor),
 
-        data:
-          new Date()
-            .toISOString()
+        data:new Date().toISOString()
 
       }]);
 
@@ -877,7 +873,15 @@ async function salvarReceita() {
 
     });
 
-    carregar();
+    await carregar();
+
+  }
+
+  catch(error) {
+
+    console.log(error);
+
+    alert("Erro ao salvar investimento");
 
   }
 
