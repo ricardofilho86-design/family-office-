@@ -65,15 +65,16 @@ export default function DespesaForm({
       />
 
       <input
-        type="number"
-        placeholder="Valor"
-        onChange={e=>
-          setForm({
-            ...form,
-            valor:e.target.value
-          })
-        }
-      />
+  type="number"
+  placeholder="Valor"
+  value={form.valor}
+  onChange={e=>
+    setForm({
+      ...form,
+      valor:e.target.value
+    })
+  }
+/>
 
       <button onClick={salvar}>
         Salvar Despesa

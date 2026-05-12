@@ -78,15 +78,16 @@ export default function InvestimentoForm({
       </select>
 
       <input
-        type="number"
-        placeholder="Valor"
-        onChange={e=>
-          setFormInvest({
-            ...formInvest,
-            valor:e.target.value
-          })
-        }
-      />
+  type="number"
+  placeholder="Valor"
+  value={formInvest.valor}
+  onChange={e=>
+    setFormInvest({
+      ...formInvest,
+      valor:e.target.value
+    })
+  }
+/>
 
       <button onClick={salvarInvest}>
         Salvar Investimento
