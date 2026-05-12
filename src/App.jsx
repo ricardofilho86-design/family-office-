@@ -109,16 +109,27 @@ const [formDespesa, setFormDespesa] = useState({
   */
 
   const COLORS = [
-    "#22c55e",
-    "#ef4444",
-    "#3b82f6",
-    "#f59e0b",
-    "#8b5cf6",
-    "#06b6d4",
-    "#14b8a6",
-    "#eab308",
-    "#ec4899"
-  ];
+
+  "#ef4444",
+
+  "#f97316",
+
+  "#eab308",
+
+  "#8b5cf6",
+
+  "#ec4899",
+
+  "#06b6d4",
+
+  "#6366f1",
+
+  "#f43f5e",
+
+  "#78716c"
+
+];
+
 
   /*
   =====================================================
@@ -1884,21 +1895,27 @@ HISTÓRICO DE LANÇAMENTOS
               >
 
                 {
-                  graficoReceitaDespesa
-                    .map((_,i)=>(
+  graficoReceitaDespesa
+    .map((item,i)=>(
 
-                    <Cell
-                      key={i}
-                      fill={
-                        COLORS[
-                          i %
-                          COLORS.length
-                        ]
-                      }
-                    />
+    <Cell
 
-                  ))
-                }
+      key={i}
+
+      fill={
+
+        item.name === "Receitas"
+
+        ? "#22c55e"
+
+        : "#ef4444"
+
+      }
+
+    />
+
+  ))
+}
 
               </Pie>
 
